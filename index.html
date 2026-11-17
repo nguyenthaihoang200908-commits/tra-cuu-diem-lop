@@ -25,7 +25,6 @@
         let currentStudentData = null;
         let currentClassData = null;
 
-        // Xử lý đăng nhập vào lớp
         window.loginClass = async function() {
             let classId = document.getElementById("classIdInput").value.trim().toUpperCase();
             let password = document.getElementById("passwordInput").value.trim();
@@ -60,19 +59,27 @@
 
                 currentStudentData = student;
 
-                // Chuyển sang giao diện trong lớp
                 document.getElementById("loginBox").style.display = "none";
                 document.getElementById("dashboardBox").style.display = "block";
-                document.getElementById("displayClassName").innerText = currentClassData.className + " (" + classId + ")";
+                
+                let typeText = currentClassData.classType === "extra" ? " (Lớp Dạy Thêm)" : " (Lớp Chính Khóa)";
+                document.getElementById("displayClassName").innerText = currentClassData.className + typeText + " [" + classId + "]";
                 document.getElementById("displayStudentName").innerText = student.name;
 
-                // Nạp dữ liệu mặc định cho 3 chức năng
+                // Ẩn/hiện tab dựa theo loại lớp
+                if (currentClassData.classType === "extra") {
+                    document.getElementById("tabBtn_grades").style.display = "none";
+                    document.getElementById("tabBtn_extra").style.display = "block";
+                    switchStudentTab('extra');
+                } else {
+                    document.getElementById("tabBtn_grades").style.display = "block";
+                    document.getElementById("tabBtn_extra").style.display = "none";
+                    switchStudentTab('notes');
+                }
+
                 loadNotesContent();
                 loadDocumentsContent();
                 loadGradesContent();
-
-                // Mặc định hiển thị chức năng 1 (Xem ghi chú)
-                switchStudentTab('notes');
 
             } catch (error) {
                 console.error("Lỗi đăng nhập: ", error);
@@ -80,28 +87,27 @@
             }
         };
 
-        // Chuyển đổi giữa 3 tab chức năng trong lớp
         window.switchStudentTab = function(tabName) {
-            ["notes", "documents", "grades"].forEach(t => {
+            ["notes", "documents", "grades", "extra"].forEach(t => {
                 let section = document.getElementById("section_" + t);
                 let btn = document.getElementById("tabBtn_" + t);
-                if (t === tabName) {
-                    section.style.display = "block";
-                    btn.className = "flex-1 py-3 text-center font-bold text-blue-600 border-b-2 border-blue-600 bg-blue-50/50 transition text-sm";
-                } else {
-                    section.style.display = "none";
-                    btn.className = "flex-1 py-3 text-center font-medium text-gray-500 hover:text-gray-700 transition text-sm";
+                if (btn) {
+                    if (t === tabName) {
+                        section.style.display = "block";
+                        btn.className = "flex-1 py-3 text-center font-bold text-blue-600 border-b-2 border-blue-600 bg-blue-50/50 transition text-xs";
+                    } else {
+                        section.style.display = "none";
+                        btn.className = "flex-1 py-3 text-center font-medium text-gray-500 hover:text-gray-700 transition text-xs";
+                    }
                 }
             });
         };
 
-        // Chức năng 1: Xem ghi chú
         function loadNotesContent() {
             let notesText = currentClassData.notes ? currentClassData.notes : "Chưa có ghi chú hay dặn dò nào từ giáo viên.";
             document.getElementById("studentNotesContent").innerText = notesText;
         }
 
-        // Chức năng 2: Xem tài liệu
         function loadDocumentsContent() {
             let docHTML = "";
             if (currentClassData.documents && currentClassData.documents.length > 0) {
@@ -113,79 +119,102 @@
                     </div>`;
                 });
             } else {
-                docHTML = "<p class='text-sm text-gray-400 italic text-center py-4'>Chưa có tài liệu học tập nào được tải lên.</p>";
+                docHTML = "<p class='text-sm text-gray-400 italic text-center py-4'>Chưa có tài liệu nào cho lớp này.</p>";
             }
             document.getElementById("studentDocList").innerHTML = docHTML;
         }
 
-        // Chức năng 3: Xem điểm
         function loadGradesContent() {
             let gradeContainer = document.getElementById("studentGradeContent");
+            let extraContainer = document.getElementById("studentExtraContent");
 
-            // Kiểm tra xem giáo viên đã công khai điểm chưa
             if (!currentClassData.isGradePublic) {
-                gradeContainer.innerHTML = `
+                let lockHTML = `
                 <div class="text-center py-8 text-gray-500">
                     <p class="text-lg font-semibold text-orange-600 mb-1">🔒 Sổ điểm đang tạm khóa</p>
                     <p class="text-sm">Giáo viên chưa mở cổng công khai sổ điểm cho lớp học này.</p>
                 </div>`;
+                if (gradeContainer) gradeContainer.innerHTML = lockHTML;
+                if (extraContainer) extraContainer.innerHTML = lockHTML;
                 return;
             }
 
             let student = currentStudentData;
-            let htmlDetails = "";
-            let sum1 = 0, weight1 = 0;
-            let sum2 = 0, weight2 = 0;
 
-            // Bảng điểm Học kỳ 1
-            htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide">📚 Học Kỳ 1</h3>`;
-            htmlDetails += `<div class="bg-gray-50 border rounded-lg p-3 mb-4 space-y-2">`;
-            if (currentClassData.columnsHK1) {
-                currentClassData.columnsHK1.forEach(col => {
-                    let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
-                    htmlDetails += `<div class="flex justify-between text-sm border-b pb-1"><span class="text-gray-600">${col.name} (Hệ số ${col.weight}):</span> <span class="font-bold">${sc}</span></div>`;
-                    if (sc !== "" && sc !== "-") { sum1 += parseFloat(sc) * col.weight; weight1 += col.weight; }
-                });
+            // Nếu là lớp chính khóa
+            if (currentClassData.classType !== "extra" && gradeContainer) {
+                let htmlDetails = "";
+                let sum1 = 0, weight1 = 0;
+                let sum2 = 0, weight2 = 0;
+
+                // Học kỳ 1
+                htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide">📚 Học Kỳ 1</h3>`;
+                htmlDetails += `<div class="bg-gray-50 border rounded-lg p-3 mb-4 space-y-2">`;
+                if (currentClassData.columnsHK1) {
+                    currentClassData.columnsHK1.forEach(col => {
+                        let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
+                        htmlDetails += `<div class="flex justify-between text-sm border-b pb-1"><span class="text-gray-600">${col.name} (Hệ số ${col.weight}):</span> <span class="font-bold">${sc}</span></div>`;
+                        if (sc !== "" && sc !== "-") { sum1 += parseFloat(sc) * col.weight; weight1 += col.weight; }
+                    });
+                }
+                let avg1 = weight1 > 0 ? (sum1 / weight1).toFixed(1) : "-";
+                htmlDetails += `<div class="flex justify-between text-sm font-bold text-yellow-800 pt-1"><span>🌟 Đánh dấu / Thưởng HK1:</span> <span>${student.marksHK1 || 0} lần</span></div>`;
+                htmlDetails += `<div class="flex justify-between text-sm font-bold text-blue-800 pt-1 border-t"><span>Điểm Trung Bình HK1:</span> <span class="text-base">${avg1}</span></div>`;
+                htmlDetails += `</div>`;
+
+                // Học kỳ 2
+                htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide">📚 Học Kỳ 2</h3>`;
+                htmlDetails += `<div class="bg-gray-50 border rounded-lg p-3 mb-4 space-y-2">`;
+                if (currentClassData.columnsHK2) {
+                    currentClassData.columnsHK2.forEach(col => {
+                        let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
+                        htmlDetails += `<div class="flex justify-between text-sm border-b pb-1"><span class="text-gray-600">${col.name} (Hệ số ${col.weight}):</span> <span class="font-bold">${sc}</span></div>`;
+                        if (sc !== "" && sc !== "-") { sum2 += parseFloat(sc) * col.weight; weight2 += col.weight; }
+                    });
+                }
+                let avg2 = weight2 > 0 ? (sum2 / weight2).toFixed(1) : "-";
+                htmlDetails += `<div class="flex justify-between text-sm font-bold text-yellow-800 pt-1"><span>🌟 Đánh dấu / Thưởng HK2:</span> <span>${student.marksHK2 || 0} lần</span></div>`;
+                htmlDetails += `<div class="flex justify-between text-sm font-bold text-blue-800 pt-1 border-t"><span>Điểm Trung Bình HK2:</span> <span class="text-base">${avg2}</span></div>`;
+                htmlDetails += `</div>`;
+
+                // Tổng kết cả năm
+                let yw = currentClassData.yearWeights || { w1: 1, w2: 2 };
+                let yearAvg = "-";
+                let rank = "-";
+                if (avg1 !== "-" && avg2 !== "-") {
+                    let totalW = yw.w1 + yw.w2;
+                    let calc = totalW > 0 ? (parseFloat(avg1) * yw.w1 + parseFloat(avg2) * yw.w2) / totalW : 0;
+                    yearAvg = calc.toFixed(1);
+                    if (calc >= 8.0) rank = "Giỏi";
+                    else if (calc >= 6.5) rank = "Khá";
+                    else if (calc >= 5.0) rank = "Trung bình";
+                    else rank = "Yếu";
+                }
+
+                htmlDetails += `<h3 class="font-bold text-green-700 mb-2 text-sm uppercase tracking-wide">🏆 Tổng Kết Cả Năm</h3>`;
+                htmlDetails += `<div class="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">`;
+                htmlDetails += `<div class="flex justify-between text-sm font-bold text-green-900"><span>Điểm TB Môn Cả Năm:</span> <span class="text-lg">${yearAvg}</span></div>`;
+                htmlDetails += `<div class="flex justify-between text-sm font-bold text-gray-700"><span>Xếp loại học lực:</span> <span>${rank}</span></div>`;
+                htmlDetails += `</div>`;
+
+                gradeContainer.innerHTML = htmlDetails;
             }
-            let avg1 = weight1 > 0 ? (sum1 / weight1).toFixed(1) : "-";
-            htmlDetails += `<div class="flex justify-between text-sm font-bold text-yellow-800 pt-1"><span>🌟 Điểm đánh dấu / Thưởng HK1:</span> <span>${student.marksHK1 || 0} lần</span></div>`;
-            htmlDetails += `<div class="flex justify-between text-sm font-bold text-blue-800 pt-1 border-t"><span>Điểm Trung Bình HK1:</span> <span class="text-base">${avg1}</span></div>`;
-            htmlDetails += `</div>`;
 
-            // Bảng điểm Học kỳ 2
-            htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide">📚 Học Kỳ 2</h3>`;
-            htmlDetails += `<div class="bg-gray-50 border rounded-lg p-3 mb-4 space-y-2">`;
-            if (currentClassData.columnsHK2) {
-                currentClassData.columnsHK2.forEach(col => {
-                    let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
-                    htmlDetails += `<div class="flex justify-between text-sm border-b pb-1"><span class="text-gray-600">${col.name} (Hệ số ${col.weight}):</span> <span class="font-bold">${sc}</span></div>`;
-                    if (sc !== "" && sc !== "-") { sum2 += parseFloat(sc) * col.weight; weight2 += col.weight; }
-                });
+            // Nếu là lớp dạy thêm
+            if (currentClassData.classType === "extra" && extraContainer) {
+                let extraHTML = `<h3 class="font-bold text-purple-700 mb-2 text-sm uppercase tracking-wide">📝 Điểm Bài Kiểm Tra / Bài Tập</h3>`;
+                extraHTML += `<div class="bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">`;
+                if (currentClassData.extraColumns && currentClassData.extraColumns.length > 0) {
+                    currentClassData.extraColumns.forEach(col => {
+                        let sc = student.extraScores && student.extraScores[col.id] !== undefined ? student.extraScores[col.id] : "-";
+                        extraHTML += `<div class="flex justify-between text-sm border-b border-purple-100 pb-1"><span class="text-gray-700">${col.name}:</span> <span class="font-bold text-purple-900 text-base">${sc}</span></div>`;
+                    });
+                } else {
+                    extraHTML += `<p class='text-sm text-gray-400 italic text-center py-2'>Chưa có bài kiểm tra nào.</p>`;
+                }
+                extraHTML += `</div>`;
+                extraContainer.innerHTML = extraHTML;
             }
-            let avg2 = weight2 > 0 ? (sum2 / weight2).toFixed(1) : "-";
-            htmlDetails += `<div class="flex justify-between text-sm font-bold text-yellow-800 pt-1"><span>🌟 Điểm đánh dấu / Thưởng HK2:</span> <span>${student.marksHK2 || 0} lần</span></div>`;
-            htmlDetails += `<div class="flex justify-between text-sm font-bold text-blue-800 pt-1 border-t"><span>Điểm Trung Bình HK2:</span> <span class="text-base">${avg2}</span></div>`;
-            htmlDetails += `</div>`;
-
-            // Tổng kết cả năm
-            let yearAvg = "-";
-            let rank = "-";
-            if (avg1 !== "-" && avg2 !== "-") {
-                let calc = (parseFloat(avg1) + parseFloat(avg2) * 2) / 3;
-                yearAvg = calc.toFixed(1);
-                if (calc >= 8.0) rank = "Giỏi";
-                else if (calc >= 6.5) rank = "Khá";
-                else if (calc >= 5.0) rank = "Trung bình";
-                else rank = "Yếu";
-            }
-
-            htmlDetails += `<h3 class="font-bold text-green-700 mb-2 text-sm uppercase tracking-wide">🏆 Tổng Kết Cả Năm</h3>`;
-            htmlDetails += `<div class="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">`;
-            htmlDetails += `<div class="flex justify-between text-sm font-bold text-green-900"><span>Điểm TB Môn Cả Năm:</span> <span class="text-lg">${yearAvg}</span></div>`;
-            htmlDetails += `<div class="flex justify-between text-sm font-bold text-gray-700"><span>Xếp loại học lực:</span> <span>${rank}</span></div>`;
-            htmlDetails += `</div>`;
-
-            gradeContainer.innerHTML = htmlDetails;
         }
 
         window.logout = function() {
@@ -198,7 +227,6 @@
 <body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen p-4">
     <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-6 overflow-hidden">
         
-        <!-- MÀN HÌNH ĐĂNG NHẬP -->
         <div id="loginBox">
             <h1 class="text-2xl font-bold text-center text-blue-600 mb-2">Tra Cứu Học Tập</h1>
             <p class="text-center text-gray-500 text-sm mb-6">Đăng nhập vào lớp học của bạn để xem ghi chú, tài liệu và điểm số.</p>
@@ -220,7 +248,6 @@
             </div>
         </div>
 
-        <!-- MÀN HÌNH CHÍNH TRONG LỚP (GỒM 3 CHỨC NĂNG) -->
         <div id="dashboardBox" style="display: none;">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
@@ -230,14 +257,13 @@
                 <button onclick="logout()" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-bold text-gray-600 transition">Đăng xuất</button>
             </div>
 
-            <!-- 3 Nút Chức Năng (Tabs) -->
             <div class="flex border rounded-lg overflow-hidden mb-4 bg-gray-50">
                 <button id="tabBtn_notes" onclick="switchStudentTab('notes')">1. Ghi Chú</button>
                 <button id="tabBtn_documents" onclick="switchStudentTab('documents')">2. Tài Liệu</button>
-                <button id="tabBtn_grades" onclick="switchStudentTab('grades')">3. Bảng Điểm</button>
+                <button id="tabBtn_grades" onclick="switchStudentTab('grades')">3. Sổ Điểm</button>
+                <button id="tabBtn_extra" onclick="switchStudentTab('extra')" style="display: none;">3. Điểm Bài Làm</button>
             </div>
 
-            <!-- Nội dung Chức năng 1: Xem Ghi Chú -->
             <div id="section_notes" class="space-y-3">
                 <h3 class="font-bold text-gray-800 text-sm">📌 Dặn Dò Từ Giáo Viên</h3>
                 <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg text-sm text-yellow-900 leading-relaxed" id="studentNotesContent">
@@ -245,15 +271,17 @@
                 </div>
             </div>
 
-            <!-- Nội dung Chức năng 2: Xem Tài Liệu -->
             <div id="section_documents" class="space-y-3" style="display: none;">
                 <h3 class="font-bold text-gray-800 text-sm">📂 Tài Liệu Ôn Tập</h3>
                 <div id="studentDocList" class="space-y-2 max-h-72 overflow-y-auto"></div>
             </div>
 
-            <!-- Nội dung Chức năng 3: Xem Bảng Điểm -->
             <div id="section_grades" class="space-y-3" style="display: none;">
                 <div id="studentGradeContent" class="max-h-80 overflow-y-auto pr-1"></div>
+            </div>
+
+            <div id="section_extra" class="space-y-3" style="display: none;">
+                <div id="studentExtraContent" class="max-h-80 overflow-y-auto pr-1"></div>
             </div>
         </div>
 
