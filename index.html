@@ -25,37 +25,39 @@
         let currentStudentData = null;
         let currentClassData = null;
 
-        window.loginClass = async function() {
-            let classId = document.getElementById("classIdInput").value.trim().toUpperCase();
-            let password = document.getElementById("passwordInput").value.trim();
-            let studentNameQuery = document.getElementById("studentNameInput").value.trim().toLowerCase();
-
-            if (!classId || !password || !studentNameQuery) {
-                alert("Vui lòng nhập đầy đủ ID lớp, Mật khẩu và Họ tên của bạn!");
-                return;
-            }
-
+        // Hàm xử lý đăng nhập chung (dùng cho cả bấm nút và tự động đăng nhập)
+        async function performLogin(classId, password, studentNameQuery, isAuto = false) {
             try {
                 const docRef = doc(db, "classes", classId);
                 const docSnap = await getDoc(docRef);
 
                 if (!docSnap.exists()) {
-                    alert("Không tìm thấy lớp học này!");
+                    if (!isAuto) alert("Không tìm thấy lớp học này!");
+                    else clearSavedLogin();
                     return;
                 }
 
                 currentClassData = docSnap.data();
 
                 if (currentClassData.password !== password) {
-                    alert("Mật khẩu lớp học không chính xác!");
+                    if (!isAuto) alert("Mật khẩu lớp học không chính xác!");
+                    else clearSavedLogin();
                     return;
                 }
 
-                let student = currentClassData.students.find(s => s.name.toLowerCase().includes(studentNameQuery));
+                let student = currentClassData.students.find(s => s.name.toLowerCase().includes(studentNameQuery.toLowerCase()));
                 if (!student) {
-                    alert("Không tìm thấy tên học sinh trong danh sách lớp. Vui lòng kiểm tra lại họ tên!");
+                    if (!isAuto) alert("Không tìm thấy tên học sinh trong danh sách lớp. Vui lòng kiểm tra lại họ tên!");
+                    else clearSavedLogin();
                     return;
                 }
+
+                // Lưu thông tin đăng nhập vào bộ nhớ trình duyệt (localStorage)
+                localStorage.setItem("savedStudentLogin", JSON.stringify({
+                    classId: classId,
+                    password: password,
+                    studentName: studentNameQuery
+                }));
 
                 currentStudentData = student;
 
@@ -66,7 +68,6 @@
                 document.getElementById("displayClassName").innerText = currentClassData.className + typeText + " [" + classId + "]";
                 document.getElementById("displayStudentName").innerText = student.name;
 
-                // Ẩn/hiện tab dựa theo loại lớp
                 if (currentClassData.classType === "extra") {
                     document.getElementById("tabBtn_grades").style.display = "none";
                     document.getElementById("tabBtn_extra").style.display = "block";
@@ -83,9 +84,54 @@
 
             } catch (error) {
                 console.error("Lỗi đăng nhập: ", error);
-                alert("Đã xảy ra lỗi kết nối cơ sở dữ liệu!");
+                if (!isAuto) alert("Đã xảy ra lỗi kết nối cơ sở dữ liệu!");
             }
+        }
+
+        function clearSavedLogin() {
+            localStorage.removeItem("savedStudentLogin");
+            document.getElementById("loginStatusMsg").style.display = "none";
+        }
+
+        window.loginClass = async function() {
+            let classId = document.getElementById("classIdInput").value.trim().toUpperCase();
+            let password = document.getElementById("passwordInput").value.trim();
+            let studentNameQuery = document.getElementById("studentNameInput").value.trim();
+
+            if (!classId || !password || !studentNameQuery) {
+                alert("Vui lòng nhập đầy đủ ID lớp, Mật khẩu và Họ tên của bạn!");
+                return;
+            }
+
+            const btn = document.getElementById("loginBtn");
+            btn.innerText = "Đang vào lớp...";
+            btn.disabled = true;
+
+            await performLogin(classId, password, studentNameQuery, false);
+
+            btn.innerText = "Vào Lớp Học";
+            btn.disabled = false;
         };
+
+        // Tự động kiểm tra và đăng nhập lại khi mở trang hoặc F5
+        window.addEventListener("DOMContentLoaded", async () => {
+            const savedData = localStorage.getItem("savedStudentLogin");
+            if (savedData) {
+                try {
+                    const { classId, password, studentName } = JSON.parse(savedData);
+                    if (classId && password && studentName) {
+                        document.getElementById("classIdInput").value = classId;
+                        document.getElementById("passwordInput").value = password;
+                        document.getElementById("studentNameInput").value = studentName;
+                        document.getElementById("loginStatusMsg").style.display = "block";
+                        await performLogin(classId, password, studentName, true);
+                        document.getElementById("loginStatusMsg").style.display = "none";
+                    }
+                } catch (e) {
+                    clearSavedLogin();
+                }
+            }
+        });
 
         window.switchStudentTab = function(tabName) {
             ["notes", "documents", "grades", "extra"].forEach(t => {
@@ -141,13 +187,11 @@
 
             let student = currentStudentData;
 
-            // Nếu là lớp chính khóa
             if (currentClassData.classType !== "extra" && gradeContainer) {
                 let htmlDetails = "";
                 let sum1 = 0, weight1 = 0;
                 let sum2 = 0, weight2 = 0;
 
-                // Học kỳ 1
                 htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide">📚 Học Kỳ 1</h3>`;
                 htmlDetails += `<div class="bg-gray-50 border rounded-lg p-3 mb-4 space-y-2">`;
                 if (currentClassData.columnsHK1) {
@@ -162,7 +206,6 @@
                 htmlDetails += `<div class="flex justify-between text-sm font-bold text-blue-800 pt-1 border-t"><span>Điểm Trung Bình HK1:</span> <span class="text-base">${avg1}</span></div>`;
                 htmlDetails += `</div>`;
 
-                // Học kỳ 2
                 htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide">📚 Học Kỳ 2</h3>`;
                 htmlDetails += `<div class="bg-gray-50 border rounded-lg p-3 mb-4 space-y-2">`;
                 if (currentClassData.columnsHK2) {
@@ -177,7 +220,6 @@
                 htmlDetails += `<div class="flex justify-between text-sm font-bold text-blue-800 pt-1 border-t"><span>Điểm Trung Bình HK2:</span> <span class="text-base">${avg2}</span></div>`;
                 htmlDetails += `</div>`;
 
-                // Tổng kết cả năm
                 let yw = currentClassData.yearWeights || { w1: 1, w2: 2 };
                 let yearAvg = "-";
                 let rank = "-";
@@ -200,7 +242,6 @@
                 gradeContainer.innerHTML = htmlDetails;
             }
 
-            // Nếu là lớp dạy thêm
             if (currentClassData.classType === "extra" && extraContainer) {
                 let extraHTML = `<h3 class="font-bold text-purple-700 mb-2 text-sm uppercase tracking-wide">📝 Điểm Bài Kiểm Tra / Bài Tập</h3>`;
                 extraHTML += `<div class="bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">`;
@@ -218,9 +259,12 @@
         }
 
         window.logout = function() {
+            // Xóa phiên đăng nhập đã lưu khi bấm Đăng xuất
+            localStorage.removeItem("savedStudentLogin");
             document.getElementById("dashboardBox").style.display = "none";
             document.getElementById("loginBox").style.display = "block";
             document.getElementById("studentNameInput").value = "";
+            document.getElementById("passwordInput").value = "";
         };
     </script>
 </head>
@@ -231,6 +275,10 @@
             <h1 class="text-2xl font-bold text-center text-blue-600 mb-2">Tra Cứu Học Tập</h1>
             <p class="text-center text-gray-500 text-sm mb-6">Đăng nhập vào lớp học của bạn để xem ghi chú, tài liệu và điểm số.</p>
             
+            <div id="loginStatusMsg" style="display: none;" class="mb-4 p-2.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg text-center border border-blue-200">
+                ⏳ Đang tự động khôi phục phiên đăng nhập trước đó...
+            </div>
+
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">ID Lớp Học</label>
@@ -244,7 +292,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Họ và Tên Của Bạn</label>
                     <input type="text" id="studentNameInput" placeholder="VD: Nguyễn Văn A" class="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
-                <button onclick="loginClass()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md">Vào Lớp Học</button>
+                <button id="loginBtn" onclick="loginClass()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-md">Vào Lớp Học</button>
             </div>
         </div>
 
@@ -254,7 +302,7 @@
                     <h2 id="displayStudentName" class="text-lg font-bold text-gray-800">Tên Học Sinh</h2>
                     <p id="displayClassName" class="text-xs text-gray-500 font-semibold">Tên lớp</p>
                 </div>
-                <button onclick="logout()" class="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg font-bold text-gray-600 transition">Đăng xuất</button>
+                <button onclick="logout()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg font-bold transition">Đăng xuất</button>
             </div>
 
             <div class="flex border rounded-lg overflow-hidden mb-4 bg-gray-50">
