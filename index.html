@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giao Diện Học Sinh - Tra Cứu Lớp Học (v2.1.0)</title>
+    <title>Giao Diện Học Sinh - Tra Cứu Lớp Học (v2.2.0)</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -23,13 +23,13 @@
         body.theme-mono .bg-blue-50, body.theme-mono .bg-blue-100,
         body.theme-mono .bg-purple-50, body.theme-mono .bg-green-50,
         body.theme-mono .bg-green-200, body.theme-mono .bg-yellow-50,
-        body.theme-mono .bg-indigo-50 {
+        body.theme-mono .bg-indigo-50, body.theme-mono .bg-emerald-50 {
             background-color: color-mix(in srgb, var(--mono-color) 10%, #ffffff) !important;
             border-color: color-mix(in srgb, var(--mono-color) 25%, #ffffff) !important;
         }
         body.theme-mono .bg-blue-600, body.theme-mono .bg-purple-600,
-        body.theme-mono .bg-green-600, body.theme-mono .bg-red-600,
-        body.theme-mono .bg-indigo-600 {
+        body.theme-mono .bg-green-600, body.theme-mono .bg-emerald-600,
+        body.theme-mono .bg-red-600, body.theme-mono .bg-indigo-600 {
             background-color: var(--mono-color) !important;
             color: #ffffff !important;
             border-color: var(--mono-color) !important;
@@ -37,12 +37,14 @@
         body.theme-mono .text-blue-600, body.theme-mono .text-blue-700, body.theme-mono .text-blue-800,
         body.theme-mono .text-purple-700, body.theme-mono .text-purple-900,
         body.theme-mono .text-green-700, body.theme-mono .text-green-800, body.theme-mono .text-green-900,
+        body.theme-mono .text-emerald-700, body.theme-mono .text-emerald-800,
         body.theme-mono .text-yellow-800, body.theme-mono .text-orange-600,
         body.theme-mono .text-red-600, body.theme-mono .text-indigo-700 {
             color: var(--mono-color) !important;
         }
         body.theme-mono .border-yellow-400, body.theme-mono .border-green-200,
-        body.theme-mono .border-purple-200, body.theme-mono .border-blue-200 {
+        body.theme-mono .border-purple-200, body.theme-mono .border-blue-200,
+        body.theme-mono .border-emerald-200 {
             border-color: var(--mono-color) !important;
         }
         body.theme-mono table, body.theme-mono th, body.theme-mono td {
@@ -64,7 +66,7 @@
             color: #cbd5e1 !important;
             border-color: #334155 !important;
         }
-        body.theme-dark input {
+        body.theme-dark input, body.theme-dark textarea {
             background-color: #0f172a !important;
             color: #f8fafc !important;
             border-color: #475569 !important;
@@ -79,7 +81,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyA2P8pOJUA4yex7-f34oBJMeu8KZjNCg_U",
@@ -94,9 +96,30 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        window.APP_VERSION = "v2.1.0";
+        window.APP_VERSION = "v2.2.0";
+        let currentClassId = null;
         let currentStudentData = null;
         let currentClassData = null;
+
+        function getCurrentDateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            return {
+                date: dateStr,
+                time: timeStr,
+                full: `${dateStr} lúc ${timeStr}`,
+                timestamp: now.getTime()
+            };
+        }
+
+        function escapeHTML(str) {
+            return String(str || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
 
         // Quản lý giao diện & Màu đơn sắc
         window.setTheme = function(themeName) {
@@ -138,7 +161,11 @@
                     return;
                 }
 
+                currentClassId = classId;
                 currentClassData = docSnap.data();
+                if (!Array.isArray(currentClassData.submissions)) {
+                    currentClassData.submissions = [];
+                }
 
                 if (currentClassData.password !== password) {
                     if (!isAuto) alert("Mật khẩu lớp học không chính xác!");
@@ -178,6 +205,7 @@
                 loadNotesContent();
                 loadDocumentsContent();
                 loadGradesContent();
+                loadSubmissionsContent();
 
             } catch (error) {
                 console.error("Lỗi đăng nhập: ", error);
@@ -209,6 +237,103 @@
             btn.innerText = "Vào Lớp Học";
             btn.disabled = false;
         };
+
+        // Gửi bài nộp lên Firestore
+        window.submitAssignment = async function() {
+            if (!currentClassId || !currentClassData || !currentStudentData) {
+                alert("Vui lòng đăng nhập lớp học trước khi nộp bài!");
+                return;
+            }
+
+            const title = document.getElementById("submitTitleInput").value.trim();
+            const link = document.getElementById("submitLinkInput").value.trim();
+            const content = document.getElementById("submitContentInput").value.trim();
+
+            if (!title) {
+                alert("Vui lòng nhập Tên bài tập / Tiêu đề bài nộp!");
+                return;
+            }
+            if (!link && !content) {
+                alert("Vui lòng nhập Link bài làm hoặc Nội dung bài làm!");
+                return;
+            }
+
+            const btn = document.getElementById("submitAssignmentBtn");
+            const originalText = btn.innerText;
+            btn.innerText = "Đang nộp bài...";
+            btn.disabled = true;
+
+            try {
+                const dt = getCurrentDateTime();
+                const newSubmission = {
+                    id: Date.now().toString(),
+                    studentId: currentStudentData.id,
+                    studentName: currentStudentData.name,
+                    title: title,
+                    link: link,
+                    content: content,
+                    submittedAt: dt.full,
+                    date: dt.date,
+                    time: dt.time,
+                    timestamp: dt.timestamp
+                };
+
+                if (!Array.isArray(currentClassData.submissions)) {
+                    currentClassData.submissions = [];
+                }
+                currentClassData.submissions.unshift(newSubmission);
+
+                await setDoc(doc(db, "classes", currentClassId), currentClassData);
+
+                document.getElementById("submitTitleInput").value = "";
+                document.getElementById("submitLinkInput").value = "";
+                document.getElementById("submitContentInput").value = "";
+
+                loadSubmissionsContent();
+                alert("Đã nộp bài thành công!");
+            } catch (error) {
+                console.error("Lỗi nộp bài: ", error);
+                alert("Có lỗi xảy ra khi nộp bài. Vui lòng thử lại!");
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        // Hiển thị danh sách bài đã nộp của học sinh hiện tại
+        function loadSubmissionsContent() {
+            const container = document.getElementById("studentSubmissionList");
+            const allSubs = Array.isArray(currentClassData.submissions) ? currentClassData.submissions : [];
+
+            const mySubs = allSubs.filter(sub =>
+                (currentStudentData.id && sub.studentId === currentStudentData.id) ||
+                (sub.studentName && sub.studentName.toLowerCase() === currentStudentData.name.toLowerCase())
+            );
+
+            if (mySubs.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg border">Bạn chưa nộp bài nào trong lớp này.</p>`;
+                return;
+            }
+
+            let html = "";
+            mySubs.forEach(sub => {
+                const safeTitle = escapeHTML(sub.title);
+                const safeContent = escapeHTML(sub.content);
+                const safeLink = escapeHTML(sub.link);
+
+                html += `
+                <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1.5">
+                    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-emerald-200/70 pb-1.5">
+                        <span class="text-sm font-bold text-emerald-900">✅ ${safeTitle}</span>
+                        <span class="text-[11px] font-semibold text-emerald-700">🕒 ${escapeHTML(sub.submittedAt || "")}</span>
+                    </div>
+                    ${safeLink ? `<div class="text-xs"><a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-semibold break-all">🔗 Link bài làm: ${safeLink}</a></div>` : ""}
+                    ${safeContent ? `<p class="text-xs text-gray-700 whitespace-pre-line bg-white/80 p-2.5 rounded-lg border border-emerald-100">${safeContent}</p>` : ""}
+                </div>`;
+            });
+
+            container.innerHTML = html;
+        }
 
         window.addEventListener("DOMContentLoaded", async () => {
             const savedMonoColor = localStorage.getItem("studentMonoColor") || "#1e3a8a";
@@ -255,9 +380,9 @@
                 sched.forEach(item => {
                     html += `
                     <tr class="hover:bg-gray-50">
-                        <td class="border border-gray-300 p-2.5 font-bold text-indigo-700">${item.day}</td>
-                        <td class="border border-gray-300 p-2.5 font-medium text-gray-700">${item.time}</td>
-                        <td class="border border-gray-300 p-2.5 text-gray-800">${item.subject}</td>
+                        <td class="border border-gray-300 p-2.5 font-bold text-indigo-700">${escapeHTML(item.day)}</td>
+                        <td class="border border-gray-300 p-2.5 font-medium text-gray-700">${escapeHTML(item.time)}</td>
+                        <td class="border border-gray-300 p-2.5 text-gray-800">${escapeHTML(item.subject)}</td>
                     </tr>`;
                 });
                 html += `</tbody></table></div>`;
@@ -285,9 +410,9 @@
                     html += `
                     <div class="bg-yellow-50/80 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm">
                         <div class="flex items-center gap-2 text-xs font-bold text-yellow-800 mb-1.5">
-                            <span>📅 ${log.fullDate || log.date}</span>
+                            <span>📅 ${escapeHTML(log.fullDate || log.date)}</span>
                         </div>
-                        <p class="text-sm text-gray-800 whitespace-pre-line leading-relaxed">${log.content}</p>
+                        <p class="text-sm text-gray-800 whitespace-pre-line leading-relaxed">${escapeHTML(log.content)}</p>
                     </div>`;
                 });
                 container.innerHTML = html;
@@ -301,14 +426,14 @@
             let docHTML = "";
             if (currentClassData.documents && currentClassData.documents.length > 0) {
                 currentClassData.documents.forEach(d => {
-                    let timeBadge = d.uploadedAt ? `<span class="text-xs text-gray-500 block mt-0.5">🕒 Đăng ngày: ${d.uploadedAt}</span>` : "";
+                    let timeBadge = d.uploadedAt ? `<span class="text-xs text-gray-500 block mt-0.5">🕒 Đăng ngày: ${escapeHTML(d.uploadedAt)}</span>` : "";
                     docHTML += `
                     <div class="flex justify-between items-center p-3.5 bg-gray-50 border rounded-xl hover:bg-blue-50/60 transition gap-3">
                         <div>
-                            <span class="text-sm font-bold text-gray-800 flex items-center gap-2">📄 ${d.name}</span>
+                            <span class="text-sm font-bold text-gray-800 flex items-center gap-2">📄 ${escapeHTML(d.name)}</span>
                             ${timeBadge}
                         </div>
-                        <a href="${d.url}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow shrink-0">Tải về / Xem</a>
+                        <a href="${escapeHTML(d.url)}" target="_blank" rel="noopener noreferrer" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow shrink-0">Tải về / Xem</a>
                     </div>`;
                 });
             } else {
@@ -341,7 +466,7 @@
                 if (currentClassData.columnsHK1) {
                     currentClassData.columnsHK1.forEach(col => {
                         let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
-                        htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${col.name} <span class="text-xs">(HS ${col.weight})</span>:</span> <span class="font-bold">${sc}</span></div>`;
+                        htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${escapeHTML(col.name)} <span class="text-xs">(HS ${escapeHTML(col.weight)})</span>:</span> <span class="font-bold">${escapeHTML(sc)}</span></div>`;
                         if (sc !== "" && sc !== "-") { sum1 += parseFloat(sc) * col.weight; weight1 += col.weight; }
                     });
                 }
@@ -355,7 +480,7 @@
                 if (currentClassData.columnsHK2) {
                     currentClassData.columnsHK2.forEach(col => {
                         let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
-                        htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${col.name} <span class="text-xs">(HS ${col.weight})</span>:</span> <span class="font-bold">${sc}</span></div>`;
+                        htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${escapeHTML(col.name)} <span class="text-xs">(HS ${escapeHTML(col.weight)})</span>:</span> <span class="font-bold">${escapeHTML(sc)}</span></div>`;
                         if (sc !== "" && sc !== "-") { sum2 += parseFloat(sc) * col.weight; weight2 += col.weight; }
                     });
                 }
@@ -392,7 +517,7 @@
                 if (currentClassData.extraColumns && currentClassData.extraColumns.length > 0) {
                     currentClassData.extraColumns.forEach(col => {
                         let sc = student.extraScores && student.extraScores[col.id] !== undefined ? student.extraScores[col.id] : "-";
-                        extraHTML += `<div class="flex justify-between items-center text-sm border-b border-purple-200/60 pb-2"><span class="text-gray-700 font-medium">${col.name}:</span> <span class="font-bold text-purple-900 text-base bg-white px-3 py-0.5 rounded border border-purple-200">${sc}</span></div>`;
+                        extraHTML += `<div class="flex justify-between items-center text-sm border-b border-purple-200/60 pb-2"><span class="text-gray-700 font-medium">${escapeHTML(col.name)}:</span> <span class="font-bold text-purple-900 text-base bg-white px-3 py-0.5 rounded border border-purple-200">${escapeHTML(sc)}</span></div>`;
                     });
                 } else {
                     extraHTML += `<p class='text-sm text-gray-400 italic text-center py-4'>Chưa có bài kiểm tra nào được chấm điểm.</p>`;
@@ -404,6 +529,9 @@
 
         window.logout = function() {
             localStorage.removeItem("savedStudentLogin");
+            currentClassId = null;
+            currentClassData = null;
+            currentStudentData = null;
             document.getElementById("dashboardBox").style.display = "none";
             document.getElementById("loginBox").style.display = "block";
             document.getElementById("studentNameInput").value = "";
@@ -415,7 +543,7 @@
     <!-- Thanh trên cùng: Phiên bản & Chọn giao diện -->
     <div class="max-w-6xl mx-auto mb-5 bg-white shadow-sm rounded-xl px-4 py-2.5 flex flex-wrap justify-between items-center gap-3 border">
         <div class="flex items-center gap-2">
-            <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">STUDENT v2.1.0</span>
+            <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">STUDENT v2.2.0</span>
             <span class="text-xs text-gray-500 hidden sm:inline">Cổng Tra Cứu Học Tập Dành Cho Học Sinh</span>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -440,7 +568,7 @@
     <!-- Khung Đăng Nhập -->
     <div id="loginBox" class="max-w-md mx-auto mt-10 bg-white shadow-xl rounded-2xl p-8 border">
         <h1 class="text-2xl font-bold text-center text-blue-600 mb-2">Tra Cứu Học Tập</h1>
-        <p class="text-center text-gray-500 text-sm mb-6">Đăng nhập vào lớp học để theo dõi thời khóa biểu, nhật ký dặn dò, tài liệu và bảng điểm.</p>
+        <p class="text-center text-gray-500 text-sm mb-6">Đăng nhập vào lớp học để theo dõi thời khóa biểu, nhật ký dặn dò, tài liệu, nộp bài và xem điểm.</p>
         
         <div id="loginStatusMsg" style="display: none;" class="mb-4 p-2.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg text-center border border-blue-200">
             ⏳ Đang tự động khôi phục phiên đăng nhập trước đó...
@@ -508,14 +636,47 @@
                 </div>
             </div>
 
-            <!-- Cột Phải (5/12): Kho Tài Liệu Theo Ngày -->
-            <div class="lg:col-span-5">
-                <div class="bg-white shadow rounded-2xl p-6 border sticky top-6">
+            <!-- Cột Phải (5/12): Nộp Bài & Kho Tài Liệu Theo Ngày -->
+            <div class="lg:col-span-5 space-y-6">
+                <!-- Khối Nộp Bài Tập / Bài Làm -->
+                <div class="bg-white shadow rounded-2xl p-6 border">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-emerald-700 text-base">📤 Nộp Bài Tập / Bài Làm</h3>
+                        <span class="text-xs text-gray-400">Ghi nhận ngày giờ</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-4">Dán link bài làm (Google Drive/Docs...) hoặc nhập nội dung trả lời trực tiếp.</p>
+
+                    <div class="space-y-3 mb-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tên bài tập / Tiêu đề *</label>
+                            <input type="text" id="submitTitleInput" placeholder="VD: Bài tập tuần 3 - Câu 1 đến 5" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Link bài làm (tùy chọn)</label>
+                            <input type="url" id="submitLinkInput" placeholder="https://docs.google.com/... hoặc link Drive" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nội dung / Lời giải (tùy chọn)</label>
+                            <textarea id="submitContentInput" rows="3" placeholder="Nhập lời giải hoặc ghi chú gửi giáo viên..." class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+                        </div>
+                        <button id="submitAssignmentBtn" onclick="submitAssignment()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
+                            Gửi Bài Nộp
+                        </button>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <h4 class="text-xs font-bold uppercase text-gray-500 mb-2.5">Bài đã nộp của bạn:</h4>
+                        <div id="studentSubmissionList" class="space-y-2.5 max-h-64 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- Khối Tài Liệu Học Tập -->
+                <div class="bg-white shadow rounded-2xl p-6 border">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-gray-800 text-base">📂 Tài Liệu Học Tập</h3>
                         <span class="text-xs text-gray-400">Sắp xếp mới nhất</span>
                     </div>
-                    <div id="studentDocList" class="space-y-3 max-h-[600px] overflow-y-auto pr-1"></div>
+                    <div id="studentDocList" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
                 </div>
             </div>
 
