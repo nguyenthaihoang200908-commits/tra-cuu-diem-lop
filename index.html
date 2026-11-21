@@ -265,6 +265,7 @@
             } else if (moduleName === "homeroom") {
                 homeroomView.classList.remove("hidden");
                 if (badge) badge.textContent = "👩‍🏫 Vào Lớp Của GVCN";
+                await syncLatestHomeroomSession();
                 renderHomeroomStudentView();
             } else {
                 classView.classList.remove("hidden");
@@ -404,6 +405,7 @@
 
                 const displayName = (matchedNormalStudent?.name || matchedHomeroomStudent?.name || studentNameQuery);
                 document.getElementById("displayStudentName").innerText = displayName;
+                renderStudentAvatarBadges(matchedHomeroomStudent || matchedNormalStudent || { name: displayName });
 
                 // Hiển thị thông tin lớp & huy hiệu nếu trùng ID + mật khẩu của cả Lớp học thường và Lớp GVCN
                 const dualBanner = document.getElementById("dualClassNoticeBanner");
@@ -968,6 +970,34 @@
         }
 
         // ==================== MODULE 3: VÀO LỚP CỦA GVCN ====================
+        async function syncLatestHomeroomSession() {
+            if (!currentSession.hasHomeroomClass || !currentSession.homeroomClassId) return;
+            try {
+                const snap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                if (!snap.exists()) return;
+                const hrStore = snap.data();
+                const classes = Array.isArray(hrStore.classes) ? hrStore.classes : [];
+                currentSession.homeroomAllClasses = classes;
+                const latestCls = classes.find(c => String(c.id || "") === String(currentSession.homeroomClassId));
+                if (!latestCls) return;
+                currentSession.homeroomClassData = latestCls;
+
+                const stList = Array.isArray(latestCls.students) ? latestCls.students : [];
+                const prevSt = currentSession.homeroomStudentData;
+                const latestSt = stList.find(s =>
+                    (prevSt?.id && s.id && String(s.id) === String(prevSt.id)) ||
+                    (prevSt?.code && s.code && normalizeName(s.code) === normalizeName(prevSt.code)) ||
+                    (prevSt?.name && s.name && normalizeName(s.name) === normalizeName(prevSt.name)) ||
+                    (currentSession.studentNameQuery && s.name && normalizeName(s.name) === normalizeName(currentSession.studentNameQuery))
+                );
+                if (latestSt) {
+                    currentSession.homeroomStudentData = latestSt;
+                }
+            } catch (e) {
+                console.warn("Không thể đồng bộ trạng thái mới nhất của lớp GVCN:", e);
+            }
+        }
+
         function renderHomeroomStudentView() {
             const activeArea = document.getElementById("homeroomStudentActiveContent");
             const emptyArea = document.getElementById("homeroomStudentEmptyNotice");
@@ -994,6 +1024,12 @@
             document.getElementById("hrProfilePhone").value = st.phone || "";
             document.getElementById("hrProfileParent").value = st.parentName || "";
             document.getElementById("hrProfileAddress").value = st.address || "";
+
+            renderStudentAvatarBadges(st);
+            applyHomeroomProfilePermissionUI(cls, st);
+            renderClassMonitorWeeklyDiarySection(cls, st);
+            renderClassActivityLogManager(cls, st);
+            renderNonMonitorPointViewSection(cls, st);
 
             // Hiển thị nhận xét theo từng giai đoạn của GVCN
             const commentsContainer = document.getElementById("hrPeriodCommentsList");
@@ -1086,6 +1122,10 @@
                 );
                 if (!targetStudent) throw new Error("Không tìm thấy hồ sơ học sinh trong lớp.");
 
+                if (!canEditPersonalInfo(targetClass, targetStudent)) {
+                    throw new Error("Giáo viên chưa cấp quyền cập nhật thông tin chung cho cả lớp nên bạn không thể sửa thông tin cá nhân.");
+                }
+
                 const newName = (document.getElementById("hrProfileName").value || "").trim() || targetStudent.name;
                 targetStudent.name = newName;
                 targetStudent.dob = (document.getElementById("hrProfileDob").value || "").trim();
@@ -1111,6 +1151,841 @@
             } finally {
                 btn.innerText = orig;
                 btn.disabled = false;
+            }
+        };
+
+
+        function canEditPersonalInfo(cls, st) {
+            if (!cls) return false;
+            if (st && (st.allowPersonalInfoEdit === true || st.canEditPersonalInfo === true)) return true;
+            const flagCandidates = [
+                cls.allowClassInfoUpdate,
+                cls.allowGeneralInfoUpdate,
+                cls.allowStudentInfoUpdate,
+                cls.allowStudentEditInfo,
+                cls.canUpdateClassInfo,
+                cls.allowStudentProfileEdit,
+                cls.permissions?.allowClassInfoUpdate,
+                cls.permissions?.allowStudentInfoUpdate,
+                cls.settings?.allowClassInfoUpdate,
+                cls.settings?.allowStudentInfoUpdate
+            ];
+            return flagCandidates.some(v => v === true);
+        }
+
+        function isClassMonitorRole(cls, st) {
+            if (!st || !cls) return false;
+
+            if (Object.prototype.hasOwnProperty.call(cls, "monitorStudentId")) {
+                if (!cls.monitorStudentId) return false;
+                if (st.id && String(cls.monitorStudentId) === String(st.id)) return true;
+                return false;
+            }
+
+            const hasMonitorIdField = Object.prototype.hasOwnProperty.call(cls, "classMonitorId") ||
+                Object.prototype.hasOwnProperty.call(cls, "monitorId") ||
+                Object.prototype.hasOwnProperty.call(cls, "leaderId");
+            const hasMonitorNameField = Object.prototype.hasOwnProperty.call(cls, "classMonitorName") ||
+                Object.prototype.hasOwnProperty.call(cls, "monitorName") ||
+                Object.prototype.hasOwnProperty.call(cls, "leaderName");
+            const hasMonitorIdsArray = Array.isArray(cls.monitorIds) || Array.isArray(cls.classMonitorIds);
+
+            const monitorId = cls.classMonitorId || cls.monitorId || cls.leaderId || "";
+            const monitorName = cls.classMonitorName || cls.monitorName || cls.leaderName || "";
+            const monitorIdsList = [
+                ...(Array.isArray(cls.monitorIds) ? cls.monitorIds : []),
+                ...(Array.isArray(cls.classMonitorIds) ? cls.classMonitorIds : [])
+            ];
+
+            const matchesAssignedList = monitorIdsList.length > 0 && (
+                (st.id && monitorIdsList.some(x => String(x) === String(st.id))) ||
+                (st.name && monitorIdsList.some(x => normalizeName(x) === normalizeName(st.name)))
+            );
+
+            const matchesAssignedSingle =
+                (monitorId && st.id && String(monitorId) === String(st.id)) ||
+                (monitorName && st.name && normalizeName(monitorName) === normalizeName(st.name));
+
+            if (matchesAssignedList || matchesAssignedSingle) {
+                return true;
+            }
+
+            if (hasMonitorIdField || hasMonitorNameField || hasMonitorIdsArray) {
+                return false;
+            }
+
+            return false;
+        }
+
+        function isWeeklyDiaryOpenByTeacher(cls) {
+            if (!cls) return false;
+            if (Object.prototype.hasOwnProperty.call(cls, "weeklyPointsUnlocked")) {
+                return cls.weeklyPointsUnlocked === true;
+            }
+            if (Object.prototype.hasOwnProperty.call(cls, "weeklyLogUnlocked")) {
+                return cls.weeklyLogUnlocked === true;
+            }
+            return false;
+        }
+
+        function canManageClassPointsAndActivityLog(cls, st) {
+            if (!cls || !st) return false;
+            return isClassMonitorRole(cls, st) && isWeeklyDiaryOpenByTeacher(cls);
+        }
+
+        function getCombinedClassPointLogs(cls) {
+            if (!cls) return [];
+            const raw = Array.isArray(cls.activityDiaryLogs) && cls.activityDiaryLogs.length > 0
+                ? cls.activityDiaryLogs
+                : (Array.isArray(cls.activityLogs) && cls.activityLogs.length > 0
+                    ? cls.activityLogs
+                    : (Array.isArray(cls.weeklyLogs) ? cls.weeklyLogs : []));
+            return raw.map((entry, idx) => {
+                let delta = 0;
+                if (typeof entry.delta === "number" && !isNaN(entry.delta)) {
+                    delta = entry.delta;
+                } else {
+                    const pts = Math.abs(parseFloat(entry.points ?? entry.point ?? entry.score ?? 0) || 0);
+                    const t = String(entry.type || "").toLowerCase();
+                    delta = (t === "minus" || t === "sub" || t === "subtract" || pts < 0) ? -pts : pts;
+                }
+                return {
+                    id: entry.id || `ptlog_${idx}`,
+                    studentId: entry.studentId || "",
+                    studentName: entry.studentName || "Học sinh",
+                    delta: delta,
+                    reason: entry.reason || entry.content || "",
+                    actorName: entry.actorName || entry.createdBy || "Lớp trưởng",
+                    createdAt: entry.createdAt || entry.updatedAt || ""
+                };
+            });
+        }
+
+        function renderNonMonitorPointViewSection(cls, st) {
+            const viewBox = document.getElementById("hrNonMonitorPointsViewBox");
+            const summaryBody = document.getElementById("hrNonMonitorPointsSummaryBody");
+            const logsContainer = document.getElementById("hrNonMonitorPointsLogsList");
+            if (!viewBox || !summaryBody || !logsContainer) return;
+
+            const isMonitor = isClassMonitorRole(cls, st);
+            if (isMonitor) {
+                viewBox.classList.add("hidden");
+                summaryBody.innerHTML = "";
+                logsContainer.innerHTML = "";
+                return;
+            }
+
+            viewBox.classList.remove("hidden");
+            const students = Array.isArray(cls?.students) ? cls.students : [];
+            const logs = getCombinedClassPointLogs(cls);
+
+            // Tính điểm cộng / trừ / tổng điểm cho từng học sinh
+            const statsMap = new Map();
+            students.forEach((s, idx) => {
+                const k = getStudentKey(s, idx);
+                statsMap.set(k, {
+                    id: s.id || "",
+                    name: s.name || "Học sinh",
+                    code: s.code || "",
+                    plus: 0,
+                    minus: 0,
+                    total: 0
+                });
+            });
+
+            logs.forEach(l => {
+                const matched = Array.from(statsMap.values()).find(item =>
+                    (l.studentId && item.id && String(l.studentId) === String(item.id)) ||
+                    (l.studentName && normalizeName(l.studentName) === normalizeName(item.name))
+                );
+                const d = Number(l.delta) || 0;
+                if (matched) {
+                    if (d >= 0) matched.plus += d;
+                    else matched.minus += Math.abs(d);
+                    matched.total = matched.plus - matched.minus;
+                } else if (l.studentName) {
+                    const keyExtra = "ext_" + normalizeName(l.studentName);
+                    if (!statsMap.has(keyExtra)) {
+                        statsMap.set(keyExtra, {
+                            id: "",
+                            name: l.studentName,
+                            code: "",
+                            plus: 0,
+                            minus: 0,
+                            total: 0
+                        });
+                    }
+                    const ex = statsMap.get(keyExtra);
+                    if (d >= 0) ex.plus += d;
+                    else ex.minus += Math.abs(d);
+                    ex.total = ex.plus - ex.minus;
+                }
+            });
+
+            const rowsArr = Array.from(statsMap.values());
+            if (!rowsArr.length) {
+                summaryBody.innerHTML = `<tr><td colspan="4" class="border border-gray-300 p-4 text-center text-xs text-gray-400 italic">Chưa có dữ liệu điểm cộng / trừ nào được nhập.</td></tr>`;
+            } else {
+                summaryBody.innerHTML = rowsArr.map(r => {
+                    const isMe = (st?.id && r.id && String(st.id) === String(r.id)) ||
+                        (st?.name && normalizeName(st.name) === normalizeName(r.name));
+                    const totalFmt = r.total > 0 ? `+${r.total}` : `${r.total}`;
+                    return `
+                    <tr class="${isMe ? "bg-amber-50/80 font-bold" : "hover:bg-gray-50"}">
+                        <td class="border border-gray-300 p-2 text-xs">
+                            ${escapeHTML(r.name)} ${isMe ? `<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-extrabold">Bạn</span>` : ""}
+                        </td>
+                        <td class="border border-gray-300 p-2 text-center text-xs font-bold text-emerald-700">+${r.plus}</td>
+                        <td class="border border-gray-300 p-2 text-center text-xs font-bold text-red-700">-${r.minus}</td>
+                        <td class="border border-gray-300 p-2 text-center text-xs font-extrabold ${r.total > 0 ? "text-emerald-800" : (r.total < 0 ? "text-red-700" : "text-gray-700")}">${escapeHTML(totalFmt)}</td>
+                    </tr>`;
+                }).join("");
+            }
+
+            if (!logs.length) {
+                logsContainer.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-xl border">Lớp trưởng chưa nhập điểm cộng / trừ nào.</p>`;
+            } else {
+                logsContainer.innerHTML = logs.map(entry => {
+                    const isAdd = Number(entry.delta) >= 0;
+                    const deltaFormatted = Number(entry.delta) > 0 ? `+${entry.delta}` : `${entry.delta}`;
+                    return `
+                    <div class="p-3 rounded-xl bg-gray-50 border flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="space-y-0.5">
+                            <div class="font-bold text-gray-900">
+                                <span class="${isAdd ? "text-emerald-700" : "text-red-700"} font-extrabold">${escapeHTML(deltaFormatted)} điểm</span>
+                                — <span>${escapeHTML(entry.studentName || "")}</span>
+                            </div>
+                            <div class="text-gray-600">${escapeHTML(entry.reason || "")}</div>
+                        </div>
+                        <div class="text-[11px] text-gray-500 text-right">
+                            <div>${escapeHTML(entry.createdAt || "")}</div>
+                            <div>Lớp trưởng: ${escapeHTML(entry.actorName || "")}</div>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
+        }
+
+        function applyHomeroomProfilePermissionUI(cls, st) {
+            const allowed = canEditPersonalInfo(cls, st);
+            const editableIds = [
+                "hrProfileName",
+                "hrProfileDob",
+                "hrProfileGender",
+                "hrProfilePhone",
+                "hrProfileParent",
+                "hrProfileAddress"
+            ];
+            editableIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.readOnly = !allowed;
+                el.disabled = !allowed;
+                if (!allowed) {
+                    el.classList.add("bg-gray-100", "text-gray-500", "cursor-not-allowed");
+                    el.classList.remove("bg-white");
+                } else {
+                    el.classList.remove("bg-gray-100", "text-gray-500", "cursor-not-allowed");
+                }
+            });
+
+            const saveBtn = document.getElementById("btnSaveHrProfile");
+            const clearBtn = document.getElementById("btnClearHrProfile");
+            const lockNotice = document.getElementById("hrProfilePermissionNotice");
+
+            if (saveBtn) {
+                saveBtn.disabled = !allowed;
+                saveBtn.classList.toggle("opacity-50", !allowed);
+                saveBtn.classList.toggle("cursor-not-allowed", !allowed);
+            }
+            if (clearBtn) {
+                clearBtn.disabled = !allowed;
+                clearBtn.classList.toggle("opacity-50", !allowed);
+                clearBtn.classList.toggle("cursor-not-allowed", !allowed);
+            }
+            if (lockNotice) {
+                if (allowed) {
+                    lockNotice.className = "p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-medium";
+                    lockNotice.innerHTML = "✅ Giáo viên đã cấp quyền cập nhật thông tin: bạn có thể sửa hoặc xóa thông tin cá nhân của mình.";
+                } else {
+                    lockNotice.className = "p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700 font-semibold";
+                    lockNotice.innerHTML = "🔒 Giáo viên chưa cấp quyền cập nhật thông tin chung cho cả lớp: bạn không thể sửa, xóa thông tin cá nhân của mình.";
+                }
+            }
+        }
+
+        window.clearStudentHomeroomProfile = async function() {
+            if (!currentSession.hasHomeroomClass || !currentSession.homeroomClassId || !currentSession.homeroomStudentData) {
+                alert("Bạn chưa đăng nhập vào lớp của GVCN!");
+                return;
+            }
+            if (!canEditPersonalInfo(currentSession.homeroomClassData, currentSession.homeroomStudentData)) {
+                alert("Giáo viên chưa cấp quyền cập nhật thông tin chung cho cả lớp nên bạn không thể xóa thông tin cá nhân của mình!");
+                return;
+            }
+            if (!confirm("Bạn có chắc muốn xóa các thông tin cá nhân đã nhập (ngày sinh, giới tính, SĐT, phụ huynh, địa chỉ)?")) {
+                return;
+            }
+
+            const btn = document.getElementById("btnClearHrProfile");
+            const orig = btn ? btn.innerText : "";
+            if (btn) {
+                btn.innerText = "Đang xóa...";
+                btn.disabled = true;
+            }
+
+            try {
+                const snap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                if (!snap.exists()) throw new Error("Không tìm thấy dữ liệu lớp chủ nhiệm.");
+
+                const storeData = snap.data();
+                const classes = Array.isArray(storeData.classes) ? storeData.classes : [];
+                const targetClass = classes.find(c => c.id === currentSession.homeroomClassId);
+                if (!targetClass) throw new Error("Không tìm thấy lớp chủ nhiệm.");
+
+                const targetStudent = (targetClass.students || []).find(s =>
+                    s.id === currentSession.homeroomStudentData.id ||
+                    normalizeName(s.name) === normalizeName(currentSession.homeroomStudentData.name)
+                );
+                if (!targetStudent) throw new Error("Không tìm thấy hồ sơ học sinh trong lớp.");
+
+                if (!canEditPersonalInfo(targetClass, targetStudent)) {
+                    throw new Error("Giáo viên chưa cấp quyền cập nhật thông tin chung cho cả lớp nên bạn không thể xóa thông tin cá nhân.");
+                }
+
+                targetStudent.dob = "";
+                targetStudent.gender = "";
+                targetStudent.phone = "";
+                targetStudent.parentName = "";
+                targetStudent.address = "";
+                targetClass.updatedAt = getCurrentDateTime().full;
+
+                await setDoc(doc(db, "homeroom_classes", "main_store"), {
+                    classes: classes,
+                    updatedAt: getCurrentDateTime().full
+                });
+
+                currentSession.homeroomClassData = targetClass;
+                currentSession.homeroomStudentData = targetStudent;
+                renderHomeroomStudentView();
+                alert("Đã xóa thông tin cá nhân của bạn!");
+            } catch (err) {
+                console.error("Lỗi xóa thông tin cá nhân:", err);
+                alert("Không thể xóa thông tin: " + err.message);
+            } finally {
+                if (btn) {
+                    btn.innerText = orig;
+                    btn.disabled = false;
+                }
+            }
+        };
+
+        function getWeeklyDiariesList(cls) {
+            if (!cls) return [];
+            if (Array.isArray(cls.weeklyDiaries)) return cls.weeklyDiaries;
+            if (Array.isArray(cls.classWeeklyDiary)) return cls.classWeeklyDiary;
+            return [];
+        }
+
+        function renderClassMonitorWeeklyDiarySection() {
+            const box = document.getElementById("hrMonitorWeeklyDiaryBox");
+            if (box) box.classList.add("hidden");
+        }
+
+        window.saveWeeklyClassDiary = async function() {
+            if (!currentSession.hasHomeroomClass || !currentSession.homeroomClassId || !currentSession.homeroomStudentData) {
+                alert("Bạn chưa đăng nhập vào lớp của GVCN!");
+                return;
+            }
+            if (!isClassMonitorRole(currentSession.homeroomClassData, currentSession.homeroomStudentData)) {
+                alert("Chỉ học sinh được cấp quyền lớp trưởng mới có thể ghi nhật ký hằng tuần!");
+                return;
+            }
+
+            const weekLabel = (document.getElementById("hrDiaryWeekInput")?.value || "").trim();
+            const highlights = (document.getElementById("hrDiaryHighlightsInput")?.value || "").trim();
+            const content = (document.getElementById("hrDiaryContentInput")?.value || "").trim();
+
+            if (!weekLabel || !content) {
+                alert("Vui lòng nhập Tuần / Thời gian và Nội dung nhật ký hằng tuần!");
+                return;
+            }
+
+            const btn = document.getElementById("btnSaveWeeklyDiary");
+            const orig = btn ? btn.innerText : "";
+            if (btn) {
+                btn.innerText = "Đang lưu nhật ký...";
+                btn.disabled = true;
+            }
+
+            try {
+                const snap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                if (!snap.exists()) throw new Error("Không tìm thấy dữ liệu lớp chủ nhiệm.");
+
+                const storeData = snap.data();
+                const classes = Array.isArray(storeData.classes) ? storeData.classes : [];
+                currentSession.homeroomAllClasses = classes;
+                const targetClass = classes.find(c => String(c.id || "") === String(currentSession.homeroomClassId));
+                if (!targetClass) throw new Error("Không tìm thấy lớp chủ nhiệm.");
+
+                const targetStudent = (targetClass.students || []).find(s =>
+                    (currentSession.homeroomStudentData?.id && s.id && String(s.id) === String(currentSession.homeroomStudentData.id)) ||
+                    (currentSession.homeroomStudentData?.name && s.name && normalizeName(s.name) === normalizeName(currentSession.homeroomStudentData.name))
+                );
+
+                currentSession.homeroomClassData = targetClass;
+                if (targetStudent) currentSession.homeroomStudentData = targetStudent;
+
+                if (!targetStudent || !isClassMonitorRole(targetClass, targetStudent)) {
+                    renderHomeroomStudentView();
+                    throw new Error("Bạn không còn là lớp trưởng nên tính năng ghi nhật ký hằng tuần đã bị ẩn.");
+                }
+
+                if (!isWeeklyDiaryOpenByTeacher(targetClass)) {
+                    renderHomeroomStudentView();
+                    throw new Error("Giáo viên chưa mở tính năng ghi chú hàng tuần.");
+                }
+
+                const existingList = Array.isArray(targetClass.weeklyDiaries)
+                    ? targetClass.weeklyDiaries
+                    : (Array.isArray(targetClass.classWeeklyDiary) ? targetClass.classWeeklyDiary : []);
+
+                const dt = getCurrentDateTime();
+                const newEntry = {
+                    id: Date.now().toString(),
+                    weekLabel: weekLabel,
+                    highlights: highlights,
+                    content: content,
+                    authorId: targetStudent.id || "",
+                    authorName: targetStudent.name || currentSession.studentNameQuery || "Lớp trưởng",
+                    createdAt: dt.full,
+                    updatedAt: dt.full,
+                    timestamp: dt.timestamp
+                };
+
+                existingList.unshift(newEntry);
+                targetClass.weeklyDiaries = existingList;
+                targetClass.classWeeklyDiary = existingList;
+                targetClass.updatedAt = dt.full;
+
+                await setDoc(doc(db, "homeroom_classes", "main_store"), {
+                    classes: classes,
+                    updatedAt: dt.full
+                });
+
+                currentSession.homeroomClassData = targetClass;
+                currentSession.homeroomStudentData = targetStudent;
+
+                document.getElementById("hrDiaryWeekInput").value = "";
+                document.getElementById("hrDiaryHighlightsInput").value = "";
+                document.getElementById("hrDiaryContentInput").value = "";
+
+                renderClassMonitorWeeklyDiarySection(targetClass, targetStudent);
+                alert("Đã lưu nhật ký hằng tuần lên hệ thống thành công!");
+            } catch (err) {
+                console.error("Lỗi lưu nhật ký hằng tuần:", err);
+                alert("Không thể lưu nhật ký hằng tuần: " + err.message);
+            } finally {
+                if (btn) {
+                    btn.innerText = orig;
+                    btn.disabled = false;
+                }
+            }
+        };
+
+
+        let selectedActivityStudentKey = null;
+
+        function getStudentAvatarSrc(st) {
+            if (!st) return "";
+            return st.avatar || st.photoUrl || st.photo || st.avatarUrl || "";
+        }
+
+        function getStudentInitials(st) {
+            const name = (st && st.name ? String(st.name).trim() : "");
+            if (!name) return "🎓";
+            const parts = name.split(/\s+/).filter(Boolean);
+            if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+
+        function renderStudentAvatarBadges(st) {
+            const avatarUrl = getStudentAvatarSrc(st);
+            const initials = getStudentInitials(st);
+
+            const topBadge = document.getElementById("topStudentAvatarBadge");
+            if (topBadge) {
+                if (avatarUrl) {
+                    topBadge.innerHTML = `<img src="${escapeHTML(avatarUrl)}" alt="Ảnh học sinh" class="w-full h-full object-cover">`;
+                } else {
+                    topBadge.innerHTML = `<span>${escapeHTML(initials)}</span>`;
+                }
+            }
+
+            const hrPreview = document.getElementById("hrStudentAvatarPreview");
+            if (hrPreview) {
+                if (avatarUrl) {
+                    hrPreview.innerHTML = `<img src="${escapeHTML(avatarUrl)}" alt="Ảnh học sinh" class="w-full h-full object-cover">`;
+                } else {
+                    hrPreview.innerHTML = `<span>${escapeHTML(initials)}</span>`;
+                }
+            }
+        }
+
+        function compressImageFileToDataURL(file, maxSize = 320, quality = 0.82) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > h && w > maxSize) {
+                            h = Math.round((h * maxSize) / w);
+                            w = maxSize;
+                        } else if (h >= w && h > maxSize) {
+                            w = Math.round((w * maxSize) / h);
+                            h = maxSize;
+                        }
+                        const canvas = document.createElement("canvas");
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL("image/jpeg", quality));
+                    };
+                    img.onerror = () => reject(new Error("Không thể đọc tệp ảnh."));
+                    img.src = reader.result;
+                };
+                reader.onerror = () => reject(new Error("Không thể tải tệp ảnh."));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.handleStudentAvatarUpload = async function(event) {
+            const file = event?.target?.files?.[0];
+            if (!file) return;
+            if (!file.type || !file.type.startsWith("image/")) {
+                alert("Vui lòng chọn một tệp hình ảnh hợp lệ!");
+                return;
+            }
+
+            const statusEl = document.getElementById("hrAvatarStatusText");
+            if (statusEl) statusEl.textContent = "Đang xử lý & lưu ảnh...";
+
+            try {
+                const dataUrl = await compressImageFileToDataURL(file, 320, 0.82);
+
+                if (currentSession.hasHomeroomClass && currentSession.homeroomClassId && currentSession.homeroomStudentData) {
+                    const snap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                    if (snap.exists()) {
+                        const storeData = snap.data();
+                        const classes = Array.isArray(storeData.classes) ? storeData.classes : [];
+                        const targetClass = classes.find(c => c.id === currentSession.homeroomClassId);
+                        if (targetClass) {
+                            const targetStudent = (targetClass.students || []).find(s =>
+                                s.id === currentSession.homeroomStudentData.id ||
+                                normalizeName(s.name) === normalizeName(currentSession.homeroomStudentData.name)
+                            );
+                            if (targetStudent) {
+                                targetStudent.avatar = dataUrl;
+                                targetClass.updatedAt = getCurrentDateTime().full;
+                                await setDoc(doc(db, "homeroom_classes", "main_store"), {
+                                    classes: classes,
+                                    updatedAt: getCurrentDateTime().full
+                                });
+                                currentSession.homeroomClassData = targetClass;
+                                currentSession.homeroomStudentData = targetStudent;
+                            }
+                        }
+                    }
+                }
+
+                if (currentSession.hasNormalClass && currentSession.normalClassId && currentSession.normalClassData && currentSession.normalStudentData) {
+                    const nData = currentSession.normalClassData;
+                    const stMatch = (nData.students || []).find(s =>
+                        (s.id && s.id === currentSession.normalStudentData.id) ||
+                        normalizeName(s.name) === normalizeName(currentSession.normalStudentData.name)
+                    );
+                    if (stMatch) {
+                        stMatch.avatar = dataUrl;
+                        currentSession.normalStudentData = stMatch;
+                        await setDoc(doc(db, "classes", currentSession.normalClassId), nData);
+                    }
+                }
+
+                const activeSt = currentSession.homeroomStudentData || currentSession.normalStudentData || { name: currentSession.studentNameQuery, avatar: dataUrl };
+                activeSt.avatar = dataUrl;
+                renderStudentAvatarBadges(activeSt);
+                if (statusEl) statusEl.textContent = "✅ Đã cập nhật ảnh";
+                alert("Đã cập nhật ảnh của học sinh thành công!");
+            } catch (err) {
+                console.error("Lỗi cập nhật ảnh học sinh:", err);
+                if (statusEl) statusEl.textContent = "Lỗi cập nhật ảnh";
+                alert("Không thể cập nhật ảnh: " + err.message);
+            } finally {
+                event.target.value = "";
+            }
+        };
+
+        function getStudentKey(st, idx) {
+            return String((st && st.id) || (st && st.code) || (st && st.name) || idx);
+        }
+
+        function getStudentBehaviorPoints(st) {
+            const raw = st?.behaviorPoints ?? st?.activityPoints ?? st?.points ?? 0;
+            const num = parseFloat(raw);
+            return Number.isFinite(num) ? num : 0;
+        }
+
+        function getClassActivityLogs(cls) {
+            if (!cls) return [];
+            if (Array.isArray(cls.activityDiaryLogs)) return cls.activityDiaryLogs;
+            if (Array.isArray(cls.activityLogs)) return cls.activityLogs;
+            return [];
+        }
+
+        window.selectStudentForPointLog = function(studentKey) {
+            if (!canManageClassPointsAndActivityLog(currentSession.homeroomClassData, currentSession.homeroomStudentData)) {
+                return;
+            }
+            selectedActivityStudentKey = String(studentKey);
+            if (currentSession.homeroomClassData && currentSession.homeroomStudentData) {
+                renderClassActivityLogManager(currentSession.homeroomClassData, currentSession.homeroomStudentData);
+            }
+            const deltaInput = document.getElementById("hrPointDeltaInput");
+            if (deltaInput) deltaInput.focus();
+        };
+
+        function renderClassActivityLogManager(cls, currentSt) {
+            const managerBox = document.getElementById("hrClassActivityLogManagerBox");
+            const rosterEl = document.getElementById("hrFullClassRosterList");
+            const totalBadge = document.getElementById("hrClassTotalBadge");
+            const selectedLabel = document.getElementById("hrSelectedStudentLabel");
+            const selectedPointsEl = document.getElementById("hrSelectedStudentPoints");
+            const logsEl = document.getElementById("hrClassActivityLogsList");
+            const permNoticeEl = document.getElementById("hrPointPermissionNotice");
+            const pointControlsEl = document.getElementById("hrPointAdjustmentControls");
+            const submitBtn = document.getElementById("btnApplyClassPointLog");
+            const modeSelect = document.getElementById("hrPointModeSelect");
+            const deltaInput = document.getElementById("hrPointDeltaInput");
+            const reasonInput = document.getElementById("hrActivityReasonInput");
+            if (!rosterEl || !totalBadge || !selectedLabel || !selectedPointsEl || !logsEl) return;
+
+            const isMonitor = isClassMonitorRole(cls, currentSt);
+            if (!isMonitor) {
+                if (managerBox) managerBox.classList.add("hidden");
+                rosterEl.innerHTML = "";
+                logsEl.innerHTML = "";
+                return;
+            }
+            if (managerBox) managerBox.classList.remove("hidden");
+
+            const isWeeklyPointsOpen = isWeeklyDiaryOpenByTeacher(cls);
+            const hasPointPermission = isMonitor && isWeeklyPointsOpen;
+
+            if (permNoticeEl) {
+                if (hasPointPermission) {
+                    permNoticeEl.className = "p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-semibold";
+                    permNoticeEl.innerHTML = "✅ Giáo viên đã mở tính năng ghi điểm cộng và trừ hàng tuần: bạn (Lớp trưởng) có thể chọn học sinh và nhập điểm cộng / trừ.";
+                } else {
+                    permNoticeEl.className = "p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700 font-semibold";
+                    permNoticeEl.innerHTML = "🔒 Giáo viên chưa mở tính năng ghi điểm cộng và trừ hàng tuần: bạn tạm thời chưa thể nhập điểm cộng / trừ.";
+                }
+            }
+            if (pointControlsEl) {
+                pointControlsEl.classList.toggle("opacity-50", !hasPointPermission);
+                pointControlsEl.classList.toggle("pointer-events-none", !hasPointPermission);
+            }
+            [modeSelect, deltaInput, reasonInput, submitBtn].forEach(ctrl => {
+                if (!ctrl) return;
+                ctrl.disabled = !hasPointPermission;
+                ctrl.classList.toggle("bg-gray-100", !hasPointPermission);
+                ctrl.classList.toggle("cursor-not-allowed", !hasPointPermission);
+            });
+
+            const students = Array.isArray(cls?.students) ? cls.students : [];
+            totalBadge.textContent = `${students.length} học sinh`;
+
+            if (!students.length) {
+                rosterEl.innerHTML = `<p class="text-xs text-gray-400 italic col-span-2 text-center py-4 bg-gray-50 rounded-xl border">Lớp chưa có danh sách học sinh.</p>`;
+                selectedLabel.textContent = "Chưa có học sinh trong lớp";
+                selectedPointsEl.textContent = "0";
+            } else {
+                if (!selectedActivityStudentKey || !students.some((s, i) => getStudentKey(s, i) === selectedActivityStudentKey)) {
+                    selectedActivityStudentKey = getStudentKey(currentSt || students[0], 0);
+                }
+
+                rosterEl.innerHTML = students.map((s, idx) => {
+                    const key = getStudentKey(s, idx);
+                    const isSelected = key === selectedActivityStudentKey;
+                    const pts = getStudentBehaviorPoints(s);
+                    const ptsText = pts > 0 ? `+${pts}` : `${pts}`;
+                    const avatar = getStudentAvatarSrc(s);
+                    const disabledAttr = hasPointPermission ? "" : "disabled";
+                    const disabledCls = hasPointPermission ? "cursor-pointer" : "opacity-60 cursor-not-allowed";
+
+                    return `
+                    <button type="button" ${disabledAttr} onclick="selectStudentForPointLog('${escapeHTML(key)}')" class="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition ${disabledCls} ${
+                        isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-gray-50 hover:bg-indigo-50 text-gray-800 border-gray-200"
+                    }">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold overflow-hidden shrink-0 ${
+                                isSelected ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-800"
+                            }">
+                                ${avatar ? `<img src="${escapeHTML(avatar)}" alt="" class="w-full h-full object-cover">` : escapeHTML(getStudentInitials(s))}
+                            </span>
+                            <span class="text-xs font-bold truncate">${escapeHTML(s.name || "Học sinh")}</span>
+                        </div>
+                        <span class="text-xs font-extrabold px-2 py-0.5 rounded-lg shrink-0 ${
+                            isSelected
+                                ? "bg-white text-indigo-700"
+                                : (pts > 0 ? "bg-emerald-100 text-emerald-800" : (pts < 0 ? "bg-red-100 text-red-700" : "bg-gray-200 text-gray-700"))
+                        }">${escapeHTML(ptsText)} đ</span>
+                    </button>`;
+                }).join("");
+
+                const foundIdx = students.findIndex((s, i) => getStudentKey(s, i) === selectedActivityStudentKey);
+                const activeTarget = foundIdx >= 0 ? students[foundIdx] : students[0];
+                const activePts = getStudentBehaviorPoints(activeTarget);
+                selectedLabel.textContent = `${activeTarget.name || "Học sinh"}${activeTarget.code ? ` (${activeTarget.code})` : ""}`;
+                selectedPointsEl.textContent = activePts > 0 ? `+${activePts}` : `${activePts}`;
+            }
+
+            const logs = getClassActivityLogs(cls);
+            if (!logs.length) {
+                logsEl.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-xl border">Chưa có ghi nhận cộng / trừ điểm nào trong nhật kí hoạt động lớp.</p>`;
+            } else {
+                logsEl.innerHTML = logs.map(entry => {
+                    const isAdd = Number(entry.delta) >= 0;
+                    const deltaFormatted = Number(entry.delta) > 0 ? `+${entry.delta}` : `${entry.delta}`;
+                    return `
+                    <div class="p-3 rounded-xl bg-gray-50 border flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="space-y-0.5">
+                            <div class="font-bold text-gray-900">
+                                <span class="${isAdd ? "text-emerald-700" : "text-red-700"} font-extrabold">${escapeHTML(deltaFormatted)} điểm</span>
+                                — <span>${escapeHTML(entry.studentName || "")}</span>
+                            </div>
+                            <div class="text-gray-600">${escapeHTML(entry.reason || "")}</div>
+                        </div>
+                        <div class="text-[11px] text-gray-500 text-right">
+                            <div>${escapeHTML(entry.createdAt || "")}</div>
+                            <div>Bởi: ${escapeHTML(entry.actorName || "")}</div>
+                        </div>
+                    </div>`;
+                }).join("");
+            }
+        }
+
+        window.applyClassPointAndActivityLog = async function() {
+            if (!currentSession.hasHomeroomClass || !currentSession.homeroomClassId) {
+                alert("Bạn chưa đăng nhập vào lớp chủ nhiệm!");
+                return;
+            }
+            if (!canManageClassPointsAndActivityLog(currentSession.homeroomClassData, currentSession.homeroomStudentData)) {
+                alert("Giáo viên chưa cấp quyền cộng / trừ điểm cho lớp hoặc tài khoản của bạn nên không thể thực hiện thao tác này!");
+                return;
+            }
+
+            const mode = document.getElementById("hrPointModeSelect")?.value || "add";
+            const rawAmount = parseFloat(document.getElementById("hrPointDeltaInput")?.value || "0");
+            const reason = (document.getElementById("hrActivityReasonInput")?.value || "").trim();
+
+            if (!Number.isFinite(rawAmount) || rawAmount <= 0) {
+                alert("Vui lòng nhập số điểm lớn hơn 0!");
+                return;
+            }
+            if (!reason) {
+                alert("Vui lòng nhập nội dung hoạt động / lý do cộng hoặc trừ điểm!");
+                return;
+            }
+
+            const btn = document.getElementById("btnApplyClassPointLog");
+            const orig = btn ? btn.innerText : "";
+            if (btn) {
+                btn.innerText = "Đang lưu điểm & nhật kí...";
+                btn.disabled = true;
+            }
+
+            try {
+                const snap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                if (!snap.exists()) throw new Error("Không tìm thấy dữ liệu lớp chủ nhiệm.");
+
+                const storeData = snap.data();
+                const classes = Array.isArray(storeData.classes) ? storeData.classes : [];
+                const targetClass = classes.find(c => c.id === currentSession.homeroomClassId);
+                if (!targetClass) throw new Error("Không tìm thấy lớp chủ nhiệm.");
+
+                const dbStudent = (targetClass.students || []).find(s =>
+                    (currentSession.homeroomStudentData?.id && s.id === currentSession.homeroomStudentData.id) ||
+                    (currentSession.homeroomStudentData?.name && normalizeName(s.name) === normalizeName(currentSession.homeroomStudentData.name))
+                ) || currentSession.homeroomStudentData;
+
+                if (!canManageClassPointsAndActivityLog(targetClass, dbStudent)) {
+                    throw new Error("Giáo viên chưa cấp quyền cộng / trừ điểm cho bạn.");
+                }
+
+                const students = Array.isArray(targetClass.students) ? targetClass.students : [];
+                const targetIdx = students.findIndex((s, i) => getStudentKey(s, i) === selectedActivityStudentKey);
+                if (targetIdx < 0) throw new Error("Vui lòng nhấp chọn một học sinh trong danh sách lớp trước.");
+
+                const targetStudent = students[targetIdx];
+                const signedDelta = mode === "subtract" ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+                const nextPoints = getStudentBehaviorPoints(targetStudent) + signedDelta;
+
+                targetStudent.behaviorPoints = nextPoints;
+                targetStudent.activityPoints = nextPoints;
+
+                const existingLogs = Array.isArray(targetClass.activityDiaryLogs)
+                    ? targetClass.activityDiaryLogs
+                    : (Array.isArray(targetClass.activityLogs) ? targetClass.activityLogs : []);
+
+                const dt = getCurrentDateTime();
+                const actorName = currentSession.homeroomStudentData?.name || currentSession.studentNameQuery || "Học sinh";
+
+                existingLogs.unshift({
+                    id: Date.now().toString(),
+                    studentId: targetStudent.id || "",
+                    studentName: targetStudent.name || "",
+                    delta: signedDelta,
+                    pointsAfter: nextPoints,
+                    reason: reason,
+                    actorName: actorName,
+                    createdAt: dt.full,
+                    timestamp: dt.timestamp
+                });
+
+                targetClass.activityDiaryLogs = existingLogs;
+                targetClass.activityLogs = existingLogs;
+                targetClass.updatedAt = dt.full;
+
+                await setDoc(doc(db, "homeroom_classes", "main_store"), {
+                    classes: classes,
+                    updatedAt: dt.full
+                });
+
+                currentSession.homeroomClassData = targetClass;
+                const updatedCurrentSt = students.find(s =>
+                    (currentSession.homeroomStudentData?.id && s.id === currentSession.homeroomStudentData.id) ||
+                    (currentSession.homeroomStudentData?.name && normalizeName(s.name) === normalizeName(currentSession.homeroomStudentData.name))
+                );
+                if (updatedCurrentSt) {
+                    currentSession.homeroomStudentData = updatedCurrentSt;
+                }
+
+                document.getElementById("hrActivityReasonInput").value = "";
+                renderClassActivityLogManager(targetClass, currentSession.homeroomStudentData || targetStudent);
+                alert(`Đã ${signedDelta >= 0 ? "cộng" : "trừ"} ${Math.abs(rawAmount)} điểm cho ${targetStudent.name} và ghi vào nhật kí hoạt động lớp!`);
+            } catch (err) {
+                console.error("Lỗi cộng/trừ điểm nhật kí lớp:", err);
+                alert("Không thể cập nhật điểm: " + err.message);
+            } finally {
+                if (btn) {
+                    btn.innerText = orig;
+                    btn.disabled = false;
+                }
             }
         };
 
@@ -1276,7 +2151,7 @@
         <div class="bg-white shadow rounded-2xl p-6 space-y-4 border">
             <div class="flex flex-wrap justify-between items-center gap-4">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl">
+                    <div id="topStudentAvatarBadge" class="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl overflow-hidden border border-blue-200 shrink-0">
                         🎓
                     </div>
                     <div>
@@ -1427,9 +2302,23 @@
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <!-- Cột trái: Cập nhật thông tin cá nhân của học sinh -->
                     <div class="lg:col-span-5 bg-white shadow rounded-2xl p-6 border space-y-4 h-fit">
-                        <div>
-                            <h3 class="text-base font-bold text-amber-800">🪪 Thông Tin Cá Nhân Của Bạn</h3>
-                            <p class="text-xs text-gray-500 mt-0.5">Cập nhật thông tin bên dưới để đồng bộ hiển thị lên sổ chủ nhiệm của giáo viên.</p>
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-base font-bold text-amber-800">🪪 Thông Tin Cá Nhân Của Bạn</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Cập nhật ảnh đại diện và thông tin cá nhân để đồng bộ lên sổ chủ nhiệm.</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div id="hrStudentAvatarPreview" class="w-14 h-14 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center overflow-hidden text-amber-800 font-extrabold text-lg shrink-0">
+                                    🎓
+                                </div>
+                                <div class="space-y-1">
+                                    <label for="hrAvatarFileInput" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[11px] cursor-pointer transition">
+                                        📷 Cập nhật ảnh
+                                    </label>
+                                    <input id="hrAvatarFileInput" type="file" accept="image/*" onchange="handleStudentAvatarUpload(event)" class="hidden">
+                                    <div id="hrAvatarStatusText" class="text-[10px] text-gray-500">Hỗ trợ ảnh JPG, PNG, WebP</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="space-y-3 text-xs">
@@ -1465,13 +2354,125 @@
                             </div>
                         </div>
 
-                        <button id="btnSaveHrProfile" type="button" onclick="saveStudentHomeroomProfile()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition">
-                            💾 Lưu & Cập Nhật Thông Tin Cá Nhân
-                        </button>
+                        <div id="hrProfilePermissionNotice" class="p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700 font-semibold">
+                            🔒 Giáo viên chưa cấp quyền cập nhật thông tin chung cho cả lớp: bạn không thể sửa, xóa thông tin cá nhân của mình.
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <button id="btnSaveHrProfile" type="button" onclick="saveStudentHomeroomProfile()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition">
+                                💾 Lưu Thông Tin Cá Nhân
+                            </button>
+                            <button id="btnClearHrProfile" type="button" onclick="clearStudentHomeroomProfile()" class="w-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold py-2.5 rounded-xl text-xs transition">
+                                🗑️ Xóa Thông Tin Cá Nhân
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Cột phải: Điểm các môn & Nhận xét theo từng giai đoạn của GVCN -->
+                    <!-- Cột phải: Điểm các môn, Nhật ký hằng tuần (Lớp trưởng) & Nhận xét theo từng giai đoạn của GVCN -->
                     <div class="lg:col-span-7 space-y-6">
+                        <div id="hrClassActivityLogManagerBox" class="bg-white shadow rounded-2xl p-6 border border-indigo-200 space-y-4">
+                            <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                                <div>
+                                    <span class="text-[11px] font-bold uppercase text-indigo-700">Quản lí Nhật kí hoạt động lớp</span>
+                                    <h3 class="text-base font-bold text-gray-900">📋 Danh Sách Lớp & Nhập Điểm Cộng / Trừ</h3>
+                                </div>
+                                <span id="hrClassTotalBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                    0 học sinh
+                                </span>
+                            </div>
+
+                            <p class="text-xs text-gray-500">
+                                Nhấp vào tên một bạn trong danh sách lớp bên dưới để chọn và thực hiện <strong>cộng / trừ điểm</strong> và ghi nhật kí hoạt động lớp.
+                            </p>
+
+                            <!-- Danh sách toàn bộ lớp -->
+                            <div>
+                                <div class="text-[11px] font-bold uppercase text-gray-500 mb-2">Danh sách toàn bộ lớp (nhấp vào tên để chọn):</div>
+                                <div id="hrFullClassRosterList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1"></div>
+                            </div>
+
+                            <!-- Thông báo trạng thái cấp quyền cộng / trừ điểm -->
+                            <div id="hrPointPermissionNotice" class="p-2.5 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-700 font-semibold">
+                                🔒 Giáo viên chưa cấp quyền cộng / trừ điểm: chức năng nhập điểm cộng và trừ hiện đang bị khóa.
+                            </div>
+
+                            <!-- Bảng điều khiển cộng / trừ điểm khi đã nhấp chọn 1 bạn -->
+                            <div id="hrPointAdjustmentPanel" class="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <span class="text-[11px] font-bold uppercase text-indigo-700">Bạn đang chọn:</span>
+                                        <div id="hrSelectedStudentLabel" class="text-sm font-extrabold text-gray-900">Chưa chọn bạn nào — hãy nhấp vào tên một bạn ở trên</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-[11px] text-gray-500 block">Điểm hiện tại</span>
+                                        <span id="hrSelectedStudentPoints" class="text-base font-extrabold text-indigo-700">0</span>
+                                    </div>
+                                </div>
+
+                                <div id="hrPointAdjustmentControls" class="space-y-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                                        <div>
+                                            <label class="block font-bold text-gray-700 mb-1">Thao tác điểm</label>
+                                            <select id="hrPointModeSelect" class="w-full border rounded-lg px-3 py-2 font-semibold bg-white">
+                                                <option value="add">➕ Cộng điểm (+)</option>
+                                                <option value="subtract">➖ Trừ điểm (-)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block font-bold text-gray-700 mb-1">Số điểm *</label>
+                                            <input id="hrPointDeltaInput" type="number" step="0.5" min="0.5" value="1" class="w-full border rounded-lg px-3 py-2 font-bold bg-white">
+                                        </div>
+                                        <div>
+                                            <label class="block font-bold text-gray-700 mb-1">Hoạt động / Lý do *</label>
+                                            <input id="hrActivityReasonInput" type="text" placeholder="VD: Phát biểu xây dựng bài, trực nhật..." class="w-full border rounded-lg px-3 py-2 bg-white">
+                                        </div>
+                                    </div>
+
+                                    <button id="btnApplyClassPointLog" type="button" onclick="applyClassPointAndActivityLog()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition">
+                                        ✅ Xác Nhận Cộng / Trừ Điểm & Ghi Nhật Kí Hoạt Động
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Lịch sử nhật kí hoạt động lớp -->
+                            <div class="border-t pt-3 space-y-2">
+                                <h4 class="text-xs font-bold uppercase text-gray-500">Nhật kí hoạt động & cộng/trừ điểm của lớp:</h4>
+                                <div id="hrClassActivityLogsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+                            </div>
+                        </div>
+
+                        <!-- Bảng xem điểm cộng / trừ dành cho học sinh không được chọn làm lớp trưởng (chỉ xem khi lớp trưởng đã nhập) -->
+                        <div id="hrNonMonitorPointsViewBox" class="hidden bg-white shadow rounded-2xl p-6 border border-indigo-200 space-y-4">
+                            <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+                                <div>
+                                    <span class="text-[11px] font-bold uppercase text-indigo-700">Điểm Cộng / Trừ Của Lớp</span>
+                                    <h3 class="text-base font-bold text-gray-900">📋 Tổng Hợp Điểm Cộng & Trừ (Do Lớp Trưởng Nhập)</h3>
+                                </div>
+                                <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border">
+                                    👁️ Chỉ xem
+                                </span>
+                            </div>
+
+                            <div class="overflow-x-auto max-h-64 overflow-y-auto border rounded-xl">
+                                <table class="w-full border-collapse text-left text-xs">
+                                    <thead class="bg-indigo-50 text-indigo-950 sticky top-0">
+                                        <tr>
+                                            <th class="border border-gray-300 p-2">Học Sinh</th>
+                                            <th class="border border-gray-300 p-2 text-center w-24 text-emerald-800">Điểm Cộng</th>
+                                            <th class="border border-gray-300 p-2 text-center w-24 text-red-700">Điểm Trừ</th>
+                                            <th class="border border-gray-300 p-2 text-center w-24 text-indigo-900">Tổng Điểm</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hrNonMonitorPointsSummaryBody"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="border-t pt-3 space-y-2">
+                                <h4 class="text-xs font-bold uppercase text-gray-500">Chi tiết các lần cộng / trừ điểm đã nhập:</h4>
+                                <div id="hrNonMonitorPointsLogsList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+                            </div>
+                        </div>
+
                         <div class="bg-white shadow rounded-2xl p-6 border space-y-3">
                             <h3 class="text-base font-bold text-gray-800">📊 Bảng Điểm Các Môn (Lớp Chủ Nhiệm)</h3>
                             <div id="hrStudentGradesContainer"></div>
