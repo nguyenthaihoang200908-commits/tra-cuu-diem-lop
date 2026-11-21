@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giao Diện Học Sinh - Tra Cứu Lớp Học (v2.2.0)</title>
+    <title>Giao Diện Học Sinh - Lớp Học, Tài Liệu & Lớp Chủ Nhiệm (v2.3.0)</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
@@ -23,13 +23,15 @@
         body.theme-mono .bg-blue-50, body.theme-mono .bg-blue-100,
         body.theme-mono .bg-purple-50, body.theme-mono .bg-green-50,
         body.theme-mono .bg-green-200, body.theme-mono .bg-yellow-50,
-        body.theme-mono .bg-indigo-50, body.theme-mono .bg-emerald-50 {
+        body.theme-mono .bg-indigo-50, body.theme-mono .bg-emerald-50,
+        body.theme-mono .bg-amber-50 {
             background-color: color-mix(in srgb, var(--mono-color) 10%, #ffffff) !important;
             border-color: color-mix(in srgb, var(--mono-color) 25%, #ffffff) !important;
         }
         body.theme-mono .bg-blue-600, body.theme-mono .bg-purple-600,
         body.theme-mono .bg-green-600, body.theme-mono .bg-emerald-600,
-        body.theme-mono .bg-red-600, body.theme-mono .bg-indigo-600 {
+        body.theme-mono .bg-red-600, body.theme-mono .bg-indigo-600,
+        body.theme-mono .bg-amber-600 {
             background-color: var(--mono-color) !important;
             color: #ffffff !important;
             border-color: var(--mono-color) !important;
@@ -39,12 +41,13 @@
         body.theme-mono .text-green-700, body.theme-mono .text-green-800, body.theme-mono .text-green-900,
         body.theme-mono .text-emerald-700, body.theme-mono .text-emerald-800,
         body.theme-mono .text-yellow-800, body.theme-mono .text-orange-600,
-        body.theme-mono .text-red-600, body.theme-mono .text-indigo-700 {
+        body.theme-mono .text-red-600, body.theme-mono .text-indigo-700,
+        body.theme-mono .text-amber-700, body.theme-mono .text-amber-800 {
             color: var(--mono-color) !important;
         }
         body.theme-mono .border-yellow-400, body.theme-mono .border-green-200,
         body.theme-mono .border-purple-200, body.theme-mono .border-blue-200,
-        body.theme-mono .border-emerald-200 {
+        body.theme-mono .border-emerald-200, body.theme-mono .border-amber-200 {
             border-color: var(--mono-color) !important;
         }
         body.theme-mono table, body.theme-mono th, body.theme-mono td {
@@ -66,7 +69,7 @@
             color: #cbd5e1 !important;
             border-color: #334155 !important;
         }
-        body.theme-dark input, body.theme-dark textarea {
+        body.theme-dark input, body.theme-dark textarea, body.theme-dark select {
             background-color: #0f172a !important;
             color: #f8fafc !important;
             border-color: #475569 !important;
@@ -76,6 +79,76 @@
         }
         body.theme-dark .text-gray-800, body.theme-dark .text-gray-700, body.theme-dark .text-gray-600 {
             color: #e2e8f0 !important;
+        }
+
+        /* Chế độ chỉ xem tài liệu học thuật (chống bôi đen sao chép / kéo ảnh) */
+        .academic-readonly-viewer {
+            user-select: none;
+            -webkit-user-select: none;
+            line-height: 1.75;
+        }
+        .academic-readonly-viewer h1 { font-size: 1.55rem; font-weight: 800; margin: 0.75rem 0 0.4rem; }
+        .academic-readonly-viewer h2 { font-size: 1.3rem; font-weight: 700; margin: 0.65rem 0 0.35rem; }
+        .academic-readonly-viewer h3 { font-size: 1.1rem; font-weight: 700; margin: 0.5rem 0 0.25rem; }
+        .academic-readonly-viewer ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.4rem 0; }
+        .academic-readonly-viewer ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.4rem 0; }
+        .academic-readonly-viewer blockquote {
+            border-left: 4px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.08);
+            padding: 0.5rem 0.9rem;
+            margin: 0.6rem 0;
+            border-radius: 0 0.5rem 0.5rem 0;
+            font-style: italic;
+        }
+        .academic-readonly-viewer pre {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin: 0.6rem 0;
+        }
+        .academic-readonly-viewer table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.6rem 0;
+        }
+        .academic-readonly-viewer table td, .academic-readonly-viewer table th {
+            border: 1px solid #cbd5e1;
+            padding: 0.45rem 0.6rem;
+        }
+        .academic-readonly-viewer img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 0.5rem 0;
+            pointer-events: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Sơ đồ tư duy chỉ xem */
+        .mm-branch {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-top: 0.45rem;
+            border-left: 2px dashed #94a3b8;
+        }
+        .mm-node-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 0.5rem;
+            border-width: 1.5px;
+            font-size: 0.82rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .drawer-backdrop {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
         }
     </style>
 
@@ -96,10 +169,32 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        window.APP_VERSION = "v2.2.0";
-        let currentClassId = null;
-        let currentStudentData = null;
-        let currentClassData = null;
+        window.APP_VERSION = "v2.3.0";
+        window.activeStudentModule = "classroom"; // "classroom" | "academic" | "homeroom"
+
+        // Phiên đăng nhập hiện tại
+        let currentSession = {
+            loginId: null,
+            password: null,
+            studentNameQuery: null,
+            hasNormalClass: false,
+            hasHomeroomClass: false,
+            normalClassId: null,
+            normalClassData: null,
+            normalStudentData: null,
+            homeroomClassId: null,
+            homeroomClassData: null,
+            homeroomStudentData: null,
+            homeroomAllClasses: []
+        };
+
+        // Trạng thái tài liệu học thuật dành cho học sinh
+        let studentAcademicState = {
+            cards: [],
+            allowedDocs: [],
+            activeDocId: null,
+            searchQuery: ""
+        };
 
         function getCurrentDateTime() {
             const now = new Date();
@@ -121,7 +216,85 @@
                 .replace(/"/g, "&quot;");
         }
 
-        // Quản lý giao diện & Màu đơn sắc
+        function stripHTML(html) {
+            const tmp = document.createElement("div");
+            tmp.innerHTML = html || "";
+            return (tmp.textContent || tmp.innerText || "").trim();
+        }
+
+        function normalizeName(str) {
+            return String(str || "").trim().toLowerCase().replace(/\s+/g, " ");
+        }
+
+        // ==================== MENU 3 GẠCH & CHUYỂN MODULE ====================
+        window.toggleNavDrawer = function(forceState) {
+            const drawer = document.getElementById("navDrawer");
+            const backdrop = document.getElementById("navBackdrop");
+            if (!drawer || !backdrop) return;
+
+            const isOpen = typeof forceState === "boolean"
+                ? forceState
+                : drawer.classList.contains("translate-x-[-100%]");
+
+            if (isOpen) {
+                drawer.classList.remove("translate-x-[-100%]");
+                backdrop.classList.remove("hidden");
+            } else {
+                drawer.classList.add("translate-x-[-100%]");
+                backdrop.classList.add("hidden");
+            }
+        };
+
+        window.switchStudentModule = async function(moduleName) {
+            window.activeStudentModule = moduleName;
+            toggleNavDrawer(false);
+
+            const classView = document.getElementById("studentClassroomView");
+            const academicView = document.getElementById("studentAcademicView");
+            const homeroomView = document.getElementById("studentHomeroomView");
+            const badge = document.getElementById("activeStudentModuleBadge");
+
+            classView.classList.add("hidden");
+            academicView.classList.add("hidden");
+            homeroomView.classList.add("hidden");
+
+            if (moduleName === "academic") {
+                academicView.classList.remove("hidden");
+                if (badge) badge.textContent = "📚 Xem Tài Liệu";
+                await loadStudentAcademicDocs();
+            } else if (moduleName === "homeroom") {
+                homeroomView.classList.remove("hidden");
+                if (badge) badge.textContent = "👩‍🏫 Vào Lớp Của GVCN";
+                renderHomeroomStudentView();
+            } else {
+                classView.classList.remove("hidden");
+                if (badge) badge.textContent = "🏫 Lớp Học";
+            }
+            updateDrawerActiveState();
+        };
+
+        function updateDrawerActiveState() {
+            const btnClass = document.getElementById("drawerBtnClassroom");
+            const btnAcad = document.getElementById("drawerBtnAcademic");
+            const btnHome = document.getElementById("drawerBtnHomeroom");
+            if (!btnClass || !btnAcad || !btnHome) return;
+
+            const inactive = "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold text-sm transition";
+
+            btnClass.className = window.activeStudentModule === "classroom"
+                ? "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm shadow transition"
+                : inactive;
+
+            btnAcad.className = window.activeStudentModule === "academic"
+                ? "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm shadow transition"
+                : inactive;
+
+            btnHome.className = window.activeStudentModule === "homeroom"
+                ? "w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-600 text-white font-bold text-sm shadow transition"
+                : inactive;
+        }
+
+        // ==================== GIAO DIỆN CHỦ ĐỀ ====================
         window.setTheme = function(themeName) {
             document.body.classList.remove("theme-multi", "theme-mono", "theme-dark");
             document.body.classList.add("theme-" + themeName);
@@ -146,39 +319,78 @@
 
         window.setMonoColor = function(hexColor) {
             document.documentElement.style.setProperty('--mono-color', hexColor);
-            document.getElementById("monoColorInput").value = hexColor;
+            const el = document.getElementById("monoColorInput");
+            if (el) el.value = hexColor;
             localStorage.setItem("studentMonoColor", hexColor);
         };
 
+        // ==================== ĐĂNG NHẬP THỐNG NHẤT ====================
+        // Nếu ID và mật khẩu khớp đồng thời Lớp Học thường & Lớp GVCN tạo -> hiển thị đồng thời cả 2
+        // Nếu chỉ khớp 1 trong 2 -> mở giao diện tương ứng
         async function performLogin(classId, password, studentNameQuery, isAuto = false) {
             try {
-                const docRef = doc(db, "classes", classId);
-                const docSnap = await getDoc(docRef);
+                const normQuery = normalizeName(studentNameQuery);
 
-                if (!docSnap.exists()) {
-                    if (!isAuto) alert("Không tìm thấy lớp học này!");
-                    else clearSavedLogin();
+                // 1. Kiểm tra Lớp học thường (collection "classes")
+                let matchedNormalClass = null;
+                let matchedNormalStudent = null;
+                const normalSnap = await getDoc(doc(db, "classes", classId));
+                if (normalSnap.exists()) {
+                    const nData = normalSnap.data();
+                    if (!Array.isArray(nData.submissions)) nData.submissions = [];
+                    if (String(nData.password || "") === password && Array.isArray(nData.students)) {
+                        const foundSt = nData.students.find(s => normalizeName(s.name).includes(normQuery));
+                        if (foundSt) {
+                            matchedNormalClass = nData;
+                            matchedNormalStudent = foundSt;
+                        }
+                    }
+                }
+
+                // 2. Kiểm tra Lớp chủ nhiệm của GVCN (doc "homeroom_classes/main_store")
+                let matchedHomeroomClass = null;
+                let matchedHomeroomStudent = null;
+                let allHomeroomClasses = [];
+                const hrSnap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                if (hrSnap.exists()) {
+                    const hrStore = hrSnap.data();
+                    allHomeroomClasses = Array.isArray(hrStore.classes) ? hrStore.classes : [];
+                    const foundHr = allHomeroomClasses.find(c =>
+                        String(c.id || "").toUpperCase() === classId &&
+                        String(c.password || "") === password
+                    );
+                    if (foundHr && Array.isArray(foundHr.students)) {
+                        const foundHrSt = foundHr.students.find(s => normalizeName(s.name).includes(normQuery));
+                        if (foundHrSt) {
+                            matchedHomeroomClass = foundHr;
+                            matchedHomeroomStudent = foundHrSt;
+                        }
+                    }
+                }
+
+                if (!matchedNormalClass && !matchedHomeroomClass) {
+                    if (!isAuto) {
+                        alert("Không tìm thấy lớp học/lớp chủ nhiệm khớp với ID, Mật khẩu và Họ tên của bạn. Vui lòng kiểm tra lại!");
+                    } else {
+                        clearSavedLogin();
+                    }
                     return;
                 }
 
-                currentClassId = classId;
-                currentClassData = docSnap.data();
-                if (!Array.isArray(currentClassData.submissions)) {
-                    currentClassData.submissions = [];
-                }
-
-                if (currentClassData.password !== password) {
-                    if (!isAuto) alert("Mật khẩu lớp học không chính xác!");
-                    else clearSavedLogin();
-                    return;
-                }
-
-                let student = currentClassData.students.find(s => s.name.toLowerCase().includes(studentNameQuery.toLowerCase()));
-                if (!student) {
-                    if (!isAuto) alert("Không tìm thấy tên học sinh trong danh sách lớp. Vui lòng kiểm tra lại họ tên!");
-                    else clearSavedLogin();
-                    return;
-                }
+                currentSession = {
+                    loginId: classId,
+                    password: password,
+                    studentNameQuery: studentNameQuery,
+                    hasNormalClass: !!matchedNormalClass,
+                    hasHomeroomClass: !!matchedHomeroomClass,
+                    normalClassId: matchedNormalClass ? classId : null,
+                    normalClassData: matchedNormalClass,
+                    normalStudentData: matchedNormalStudent,
+                    homeroomClassId: matchedHomeroomClass ? matchedHomeroomClass.id : null,
+                    homeroomClassData: matchedHomeroomClass,
+                    homeroomStudentData: matchedHomeroomStudent,
+                    homeroomAllClasses: allHomeroomClasses
+                };
 
                 localStorage.setItem("savedStudentLogin", JSON.stringify({
                     classId: classId,
@@ -186,26 +398,40 @@
                     studentName: studentNameQuery
                 }));
 
-                currentStudentData = student;
-
                 document.getElementById("loginBox").style.display = "none";
                 document.getElementById("dashboardBox").style.display = "block";
-                
-                let typeText = currentClassData.classType === "extra" ? "Lớp Dạy Thêm" : "Lớp Chính Khóa";
-                document.getElementById("displayClassName").innerText = `${currentClassData.className} • ${typeText} [ID: ${classId}]`;
-                document.getElementById("displayStudentName").innerText = student.name;
+                document.getElementById("topMenuButton").classList.remove("hidden");
 
-                if (currentClassData.classType === "extra") {
-                    document.getElementById("gradeSectionTitle").innerText = "📝 Điểm Bài Kiểm Tra / Bài Tập";
-                } else {
-                    document.getElementById("gradeSectionTitle").innerText = "📊 Sổ Điểm Chi Tiết & Tổng Kết";
+                const displayName = (matchedNormalStudent?.name || matchedHomeroomStudent?.name || studentNameQuery);
+                document.getElementById("displayStudentName").innerText = displayName;
+
+                // Hiển thị thông tin lớp & huy hiệu nếu trùng ID + mật khẩu của cả Lớp học thường và Lớp GVCN
+                const dualBanner = document.getElementById("dualClassNoticeBanner");
+                if (matchedNormalClass && matchedHomeroomClass) {
+                    document.getElementById("displayClassName").innerText =
+                        `${matchedNormalClass.className} & Lớp GVCN: ${matchedHomeroomClass.name} [ID: ${classId}]`;
+                    if (dualBanner) dualBanner.classList.remove("hidden");
+                } else if (matchedNormalClass) {
+                    const typeText = matchedNormalClass.classType === "extra" ? "Lớp Dạy Thêm" : "Lớp Chính Khóa";
+                    document.getElementById("displayClassName").innerText = `${matchedNormalClass.className} • ${typeText} [ID: ${classId}]`;
+                    if (dualBanner) dualBanner.classList.add("hidden");
+                } else if (matchedHomeroomClass) {
+                    document.getElementById("displayClassName").innerText = `Lớp Chủ Nhiệm: ${matchedHomeroomClass.name} [ID: ${classId}]`;
+                    if (dualBanner) dualBanner.classList.add("hidden");
                 }
 
-                loadScheduleContent();
-                loadNotesContent();
-                loadDocumentsContent();
-                loadGradesContent();
-                loadSubmissionsContent();
+                // Nạp dữ liệu giao diện Lớp học thường (giữ nguyên gốc)
+                renderNormalClassroomView();
+
+                // Nạp dữ liệu giao diện Lớp GVCN
+                renderHomeroomStudentView();
+
+                // Hiển thị mặc định: nếu có lớp học thường thì mở Lớp học (và hiển thị banner chuyển nhanh sang GVCN nếu trùng ID/mật khẩu), nếu chỉ có lớp GVCN thì mở thẳng Vào lớp của GVCN
+                if (matchedNormalClass) {
+                    await switchStudentModule("classroom");
+                } else {
+                    await switchStudentModule("homeroom");
+                }
 
             } catch (error) {
                 console.error("Lỗi đăng nhập: ", error);
@@ -215,7 +441,8 @@
 
         function clearSavedLogin() {
             localStorage.removeItem("savedStudentLogin");
-            document.getElementById("loginStatusMsg").style.display = "none";
+            const msg = document.getElementById("loginStatusMsg");
+            if (msg) msg.style.display = "none";
         }
 
         window.loginClass = async function() {
@@ -238,9 +465,36 @@
             btn.disabled = false;
         };
 
+        // ==================== MODULE 1: LỚP HỌC BÌNH THƯỜNG (GIỮ NHƯ CŨ) ====================
+        function renderNormalClassroomView() {
+            const activeArea = document.getElementById("normalClassroomActiveContent");
+            const emptyArea = document.getElementById("normalClassroomEmptyNotice");
+
+            if (!currentSession.hasNormalClass || !currentSession.normalClassData || !currentSession.normalStudentData) {
+                if (activeArea) activeArea.classList.add("hidden");
+                if (emptyArea) emptyArea.classList.remove("hidden");
+                return;
+            }
+
+            if (activeArea) activeArea.classList.remove("hidden");
+            if (emptyArea) emptyArea.classList.add("hidden");
+
+            if (currentSession.normalClassData.classType === "extra") {
+                document.getElementById("gradeSectionTitle").innerText = "📝 Điểm Bài Kiểm Tra / Bài Tập";
+            } else {
+                document.getElementById("gradeSectionTitle").innerText = "📊 Sổ Điểm Chi Tiết & Tổng Kết";
+            }
+
+            loadScheduleContent();
+            loadNotesContent();
+            loadDocumentsContent();
+            loadGradesContent();
+            loadSubmissionsContent();
+        }
+
         // Gửi bài nộp lên Firestore
         window.submitAssignment = async function() {
-            if (!currentClassId || !currentClassData || !currentStudentData) {
+            if (!currentSession.normalClassId || !currentSession.normalClassData || !currentSession.normalStudentData) {
                 alert("Vui lòng đăng nhập lớp học trước khi nộp bài!");
                 return;
             }
@@ -267,8 +521,8 @@
                 const dt = getCurrentDateTime();
                 const newSubmission = {
                     id: Date.now().toString(),
-                    studentId: currentStudentData.id,
-                    studentName: currentStudentData.name,
+                    studentId: currentSession.normalStudentData.id,
+                    studentName: currentSession.normalStudentData.name,
                     title: title,
                     link: link,
                     content: content,
@@ -278,12 +532,12 @@
                     timestamp: dt.timestamp
                 };
 
-                if (!Array.isArray(currentClassData.submissions)) {
-                    currentClassData.submissions = [];
+                if (!Array.isArray(currentSession.normalClassData.submissions)) {
+                    currentSession.normalClassData.submissions = [];
                 }
-                currentClassData.submissions.unshift(newSubmission);
+                currentSession.normalClassData.submissions.unshift(newSubmission);
 
-                await setDoc(doc(db, "classes", currentClassId), currentClassData);
+                await setDoc(doc(db, "classes", currentSession.normalClassId), currentSession.normalClassData);
 
                 document.getElementById("submitTitleInput").value = "";
                 document.getElementById("submitLinkInput").value = "";
@@ -300,14 +554,14 @@
             }
         };
 
-        // Hiển thị danh sách bài đã nộp của học sinh hiện tại
         function loadSubmissionsContent() {
             const container = document.getElementById("studentSubmissionList");
-            const allSubs = Array.isArray(currentClassData.submissions) ? currentClassData.submissions : [];
+            const allSubs = Array.isArray(currentSession.normalClassData?.submissions) ? currentSession.normalClassData.submissions : [];
+            const st = currentSession.normalStudentData;
 
             const mySubs = allSubs.filter(sub =>
-                (currentStudentData.id && sub.studentId === currentStudentData.id) ||
-                (sub.studentName && sub.studentName.toLowerCase() === currentStudentData.name.toLowerCase())
+                (st.id && sub.studentId === st.id) ||
+                (sub.studentName && sub.studentName.toLowerCase() === st.name.toLowerCase())
             );
 
             if (mySubs.length === 0) {
@@ -335,35 +589,9 @@
             container.innerHTML = html;
         }
 
-        window.addEventListener("DOMContentLoaded", async () => {
-            const savedMonoColor = localStorage.getItem("studentMonoColor") || "#1e3a8a";
-            setMonoColor(savedMonoColor);
-
-            const savedTheme = localStorage.getItem("studentTheme") || "multi";
-            setTheme(savedTheme);
-
-            const savedData = localStorage.getItem("savedStudentLogin");
-            if (savedData) {
-                try {
-                    const { classId, password, studentName } = JSON.parse(savedData);
-                    if (classId && password && studentName) {
-                        document.getElementById("classIdInput").value = classId;
-                        document.getElementById("passwordInput").value = password;
-                        document.getElementById("studentNameInput").value = studentName;
-                        document.getElementById("loginStatusMsg").style.display = "block";
-                        await performLogin(classId, password, studentName, true);
-                        document.getElementById("loginStatusMsg").style.display = "none";
-                    }
-                } catch (e) {
-                    clearSavedLogin();
-                }
-            }
-        });
-
-        // Hiển thị Thời Khóa Biểu của lớp
         function loadScheduleContent() {
             let container = document.getElementById("studentScheduleContent");
-            let sched = currentClassData.schedule || [];
+            let sched = currentSession.normalClassData?.schedule || [];
 
             if (sched.length > 0) {
                 let html = `
@@ -392,14 +620,14 @@
             }
         }
 
-        // Hiển thị nhật ký ghi chú theo ngày giờ
         function loadNotesContent() {
             let container = document.getElementById("studentNotesContent");
-            let logs = currentClassData.noteLogs || [];
+            let cData = currentSession.normalClassData;
+            let logs = cData?.noteLogs || [];
 
-            if (logs.length === 0 && currentClassData.notes && currentClassData.notes.trim() !== "") {
+            if (logs.length === 0 && cData?.notes && cData.notes.trim() !== "") {
                 logs = [{
-                    content: currentClassData.notes,
+                    content: cData.notes,
                     fullDate: "Thông báo mới nhất"
                 }];
             }
@@ -421,11 +649,11 @@
             }
         }
 
-        // Hiển thị danh sách tài liệu kèm ngày giờ tải lên
         function loadDocumentsContent() {
             let docHTML = "";
-            if (currentClassData.documents && currentClassData.documents.length > 0) {
-                currentClassData.documents.forEach(d => {
+            let docs = currentSession.normalClassData?.documents || [];
+            if (docs.length > 0) {
+                docs.forEach(d => {
                     let timeBadge = d.uploadedAt ? `<span class="text-xs text-gray-500 block mt-0.5">🕒 Đăng ngày: ${escapeHTML(d.uploadedAt)}</span>` : "";
                     docHTML += `
                     <div class="flex justify-between items-center p-3.5 bg-gray-50 border rounded-xl hover:bg-blue-50/60 transition gap-3">
@@ -444,8 +672,10 @@
 
         function loadGradesContent() {
             let gradeContainer = document.getElementById("studentGradeContent");
+            let cData = currentSession.normalClassData;
+            let student = currentSession.normalStudentData;
 
-            if (!currentClassData.isGradePublic) {
+            if (!cData.isGradePublic) {
                 gradeContainer.innerHTML = `
                 <div class="text-center py-12 text-gray-500 bg-gray-50 rounded-xl border">
                     <p class="text-xl font-bold text-orange-600 mb-1">🔒 Sổ điểm đang tạm khóa</p>
@@ -454,17 +684,15 @@
                 return;
             }
 
-            let student = currentStudentData;
-
-            if (currentClassData.classType !== "extra") {
+            if (cData.classType !== "extra") {
                 let htmlDetails = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">`;
                 let sum1 = 0, weight1 = 0;
                 let sum2 = 0, weight2 = 0;
 
                 htmlDetails += `<div class="bg-gray-50 border rounded-xl p-4 space-y-2">`;
                 htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide border-b pb-2">📚 Học Kỳ 1</h3>`;
-                if (currentClassData.columnsHK1) {
-                    currentClassData.columnsHK1.forEach(col => {
+                if (cData.columnsHK1) {
+                    cData.columnsHK1.forEach(col => {
                         let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
                         htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${escapeHTML(col.name)} <span class="text-xs">(HS ${escapeHTML(col.weight)})</span>:</span> <span class="font-bold">${escapeHTML(sc)}</span></div>`;
                         if (sc !== "" && sc !== "-") { sum1 += parseFloat(sc) * col.weight; weight1 += col.weight; }
@@ -477,8 +705,8 @@
 
                 htmlDetails += `<div class="bg-gray-50 border rounded-xl p-4 space-y-2">`;
                 htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide border-b pb-2">📚 Học Kỳ 2</h3>`;
-                if (currentClassData.columnsHK2) {
-                    currentClassData.columnsHK2.forEach(col => {
+                if (cData.columnsHK2) {
+                    cData.columnsHK2.forEach(col => {
                         let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
                         htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${escapeHTML(col.name)} <span class="text-xs">(HS ${escapeHTML(col.weight)})</span>:</span> <span class="font-bold">${escapeHTML(sc)}</span></div>`;
                         if (sc !== "" && sc !== "-") { sum2 += parseFloat(sc) * col.weight; weight2 += col.weight; }
@@ -490,7 +718,7 @@
                 htmlDetails += `</div>`;
                 htmlDetails += `</div>`;
 
-                let yw = currentClassData.yearWeights || { w1: 1, w2: 2 };
+                let yw = cData.yearWeights || { w1: 1, w2: 2 };
                 let yearAvg = "-";
                 let rank = "-";
                 if (avg1 !== "-" && avg2 !== "-") {
@@ -514,8 +742,8 @@
                 gradeContainer.innerHTML = htmlDetails;
             } else {
                 let extraHTML = `<div class="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2.5">`;
-                if (currentClassData.extraColumns && currentClassData.extraColumns.length > 0) {
-                    currentClassData.extraColumns.forEach(col => {
+                if (cData.extraColumns && cData.extraColumns.length > 0) {
+                    cData.extraColumns.forEach(col => {
                         let sc = student.extraScores && student.extraScores[col.id] !== undefined ? student.extraScores[col.id] : "-";
                         extraHTML += `<div class="flex justify-between items-center text-sm border-b border-purple-200/60 pb-2"><span class="text-gray-700 font-medium">${escapeHTML(col.name)}:</span> <span class="font-bold text-purple-900 text-base bg-white px-3 py-0.5 rounded border border-purple-200">${escapeHTML(sc)}</span></div>`;
                     });
@@ -527,12 +755,410 @@
             }
         }
 
+        // ==================== MODULE 2: XEM TÀI LIỆU (CHỈ XEM, KHÔNG TẢI VỀ) ====================
+        function getStudentAccessibleClassIds() {
+            const ids = [];
+            if (currentSession.normalClassId) ids.push(currentSession.normalClassId);
+            if (currentSession.homeroomClassId && !ids.includes(currentSession.homeroomClassId)) {
+                ids.push(currentSession.homeroomClassId);
+            }
+            if (currentSession.loginId && !ids.includes(currentSession.loginId)) {
+                ids.push(currentSession.loginId);
+            }
+            return ids;
+        }
+
+        function renderCardPathLabel(cardId) {
+            if (!cardId) return "Tài liệu chung";
+            const parts = [];
+            let curr = studentAcademicState.cards.find(c => c.id === cardId);
+            let guard = 0;
+            while (curr && guard < 20) {
+                parts.unshift(curr.title);
+                curr = curr.parentId ? studentAcademicState.cards.find(c => c.id === curr.parentId) : null;
+                guard++;
+            }
+            return parts.join(" / ") || "Tài liệu học thuật";
+        }
+
+        async function loadStudentAcademicDocs() {
+            try {
+                const snap = await getDoc(doc(db, "academic_library", "main_store"));
+                if (!snap.exists()) {
+                    studentAcademicState.cards = [];
+                    studentAcademicState.allowedDocs = [];
+                    renderStudentAcademicUI();
+                    return;
+                }
+
+                const data = snap.data();
+                studentAcademicState.cards = Array.isArray(data.cards) ? data.cards : [];
+                const allDocs = Array.isArray(data.documents) ? data.documents : [];
+                const accessibleIds = getStudentAccessibleClassIds();
+
+                // Chỉ lọc những tài liệu mà giáo viên cấp quyền cho lớp có học sinh đó
+                studentAcademicState.allowedDocs = allDocs.filter(d =>
+                    Array.isArray(d.allowedClassIds) &&
+                    d.allowedClassIds.some(cid => accessibleIds.includes(cid))
+                );
+
+                if (studentAcademicState.allowedDocs.length > 0) {
+                    if (!studentAcademicState.allowedDocs.some(d => d.id === studentAcademicState.activeDocId)) {
+                        studentAcademicState.activeDocId = studentAcademicState.allowedDocs[0].id;
+                    }
+                    await recordStudentDocumentView(studentAcademicState.activeDocId);
+                } else {
+                    studentAcademicState.activeDocId = null;
+                }
+
+                renderStudentAcademicUI();
+            } catch (err) {
+                console.error("Lỗi tải tài liệu học thuật:", err);
+            }
+        }
+
+        // Ghi nhận lượt xem của học sinh vào tài liệu để giáo viên thống kê
+        async function recordStudentDocumentView(docId) {
+            if (!docId) return;
+            try {
+                const snap = await getDoc(doc(db, "academic_library", "main_store"));
+                if (!snap.exists()) return;
+                const data = snap.data();
+                const docs = Array.isArray(data.documents) ? data.documents : [];
+                const targetDoc = docs.find(d => d.id === docId);
+                if (!targetDoc) return;
+
+                const stName = currentSession.normalStudentData?.name || currentSession.homeroomStudentData?.name || currentSession.studentNameQuery;
+                const stClassId = currentSession.loginId || "";
+                if (!stName) return;
+
+                if (!Array.isArray(targetDoc.viewers)) targetDoc.viewers = [];
+                const alreadyLogged = targetDoc.viewers.some(v => {
+                    if (typeof v === "string") return normalizeName(v) === normalizeName(stName);
+                    return normalizeName(v.name || v.studentName) === normalizeName(stName) && (v.classId || "") === stClassId;
+                });
+
+                if (!alreadyLogged) {
+                    targetDoc.viewers.push({
+                        name: stName,
+                        classId: stClassId,
+                        viewedAt: getCurrentDateTime().full
+                    });
+                    await setDoc(doc(db, "academic_library", "main_store"), {
+                        ...data,
+                        documents: docs
+                    });
+                }
+            } catch (e) {
+                console.warn("Không thể ghi nhận lượt xem:", e);
+            }
+        }
+
+        window.selectStudentAcademicDoc = async function(docId) {
+            studentAcademicState.activeDocId = docId;
+            renderStudentAcademicUI();
+            await recordStudentDocumentView(docId);
+        };
+
+        window.filterStudentAcademicDocs = function(q) {
+            studentAcademicState.searchQuery = (q || "").trim().toLowerCase();
+            renderStudentAcademicDocsList();
+        };
+
+        function renderStudentAcademicDocsList() {
+            const listEl = document.getElementById("studentAcademicDocsList");
+            if (!listEl) return;
+
+            const q = studentAcademicState.searchQuery;
+            const filtered = studentAcademicState.allowedDocs.filter(d => {
+                if (!q) return true;
+                const hay = `${d.title || ""} ${d.subject || ""} ${renderCardPathLabel(d.cardId)} ${stripHTML(d.htmlContent || "")}`.toLowerCase();
+                return hay.includes(q);
+            });
+
+            if (!filtered.length) {
+                listEl.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-6 bg-gray-50 rounded-xl border">Không có tài liệu nào được cấp quyền cho lớp của bạn.</p>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(d => {
+                const isSelected = d.id === studentAcademicState.activeDocId;
+                return `
+                <div onclick="selectStudentAcademicDoc('${d.id}')" class="p-3 rounded-xl border cursor-pointer transition ${
+                    isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                        : "bg-gray-50 hover:bg-indigo-50 text-gray-800 border-gray-200"
+                }">
+                    <div class="text-sm font-bold truncate">${escapeHTML(d.title)}</div>
+                    <div class="text-[11px] mt-0.5 ${isSelected ? "text-indigo-100" : "text-gray-500"}">
+                        ${escapeHTML(d.subject || "Học thuật")} • ${escapeHTML(renderCardPathLabel(d.cardId))}
+                    </div>
+                </div>`;
+            }).join("");
+        }
+
+        function renderReadOnlyMindMapHTML(node, isRoot = false) {
+            if (!node) return "";
+            const color = node.color || "#2563eb";
+            const children = Array.isArray(node.children) ? node.children : [];
+
+            return `
+            <div class="${isRoot ? "" : "mm-branch"}">
+                <div class="mm-node-card bg-white" style="border-color: ${escapeHTML(color)};">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${escapeHTML(color)};"></span>
+                    <span class="font-semibold text-gray-800">${escapeHTML(node.text)}</span>
+                </div>
+                ${children.length ? children.map(ch => renderReadOnlyMindMapHTML(ch, false)).join("") : ""}
+            </div>`;
+        }
+
+        function sanitizeReadOnlyDocumentHTML(rawHtml) {
+            const temp = document.createElement("div");
+            temp.innerHTML = rawHtml || "";
+            // Loại bỏ mọi liên kết tải xuống trực tiếp (download attribute)
+            temp.querySelectorAll("a").forEach(a => {
+                a.removeAttribute("download");
+            });
+            temp.querySelectorAll("img").forEach(img => {
+                img.setAttribute("draggable", "false");
+            });
+            return temp.innerHTML;
+        }
+
+        function renderStudentAcademicUI() {
+            renderStudentAcademicDocsList();
+            const viewerBox = document.getElementById("studentAcademicViewerBox");
+            if (!viewerBox) return;
+
+            const activeDoc = studentAcademicState.allowedDocs.find(d => d.id === studentAcademicState.activeDocId) || null;
+            if (!activeDoc) {
+                viewerBox.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <p class="text-base font-bold text-gray-600">Chưa có tài liệu học thuật để hiển thị</p>
+                        <p class="text-xs mt-1">Giáo viên chưa cấp quyền tài liệu học thuật nào cho lớp của bạn.</p>
+                    </div>`;
+                return;
+            }
+
+            const mindMapHTML = activeDoc.mindMap
+                ? `<div class="p-4 rounded-xl bg-gray-50 border space-y-2 mt-5">
+                        <div class="text-xs font-extrabold uppercase text-indigo-800">🧠 Sơ Đồ Tư Duy Tài Liệu</div>
+                        <div class="overflow-x-auto py-1">${renderReadOnlyMindMapHTML(activeDoc.mindMap, true)}</div>
+                   </div>`
+                : "";
+
+            viewerBox.innerHTML = `
+                <div class="border-b pb-4 mb-4 flex flex-wrap justify-between items-start gap-2">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-indigo-600">${escapeHTML(renderCardPathLabel(activeDoc.cardId))}</span>
+                        <h2 class="text-xl font-extrabold text-gray-900 mt-0.5">${escapeHTML(activeDoc.title)}</h2>
+                        <p class="text-xs text-gray-500 mt-1">Môn / Phân loại: <strong>${escapeHTML(activeDoc.subject || "Học thuật")}</strong> • Cập nhật: ${escapeHTML(activeDoc.updatedAt || "")}</p>
+                    </div>
+                    <span class="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                        👁️ Chế độ chỉ xem trực tuyến (Không hỗ trợ tải về)
+                    </span>
+                </div>
+
+                <div oncontextmenu="return false;" class="academic-readonly-viewer text-sm text-gray-800">
+                    ${sanitizeReadOnlyDocumentHTML(activeDoc.htmlContent)}
+                </div>
+
+                ${mindMapHTML}
+            `;
+        }
+
+        // ==================== MODULE 3: VÀO LỚP CỦA GVCN ====================
+        function renderHomeroomStudentView() {
+            const activeArea = document.getElementById("homeroomStudentActiveContent");
+            const emptyArea = document.getElementById("homeroomStudentEmptyNotice");
+
+            if (!currentSession.hasHomeroomClass || !currentSession.homeroomClassData || !currentSession.homeroomStudentData) {
+                if (activeArea) activeArea.classList.add("hidden");
+                if (emptyArea) emptyArea.classList.remove("hidden");
+                return;
+            }
+
+            if (activeArea) activeArea.classList.remove("hidden");
+            if (emptyArea) emptyArea.classList.add("hidden");
+
+            const cls = currentSession.homeroomClassData;
+            const st = currentSession.homeroomStudentData;
+
+            document.getElementById("hrClassTitleDisplay").innerText = `${cls.name} (ID: ${cls.id})`;
+
+            // Điền thông tin cá nhân hiện tại để học sinh tự cập nhật
+            document.getElementById("hrProfileCode").value = st.code || "";
+            document.getElementById("hrProfileName").value = st.name || "";
+            document.getElementById("hrProfileDob").value = st.dob || "";
+            document.getElementById("hrProfileGender").value = st.gender || "";
+            document.getElementById("hrProfilePhone").value = st.phone || "";
+            document.getElementById("hrProfileParent").value = st.parentName || "";
+            document.getElementById("hrProfileAddress").value = st.address || "";
+
+            // Hiển thị nhận xét theo từng giai đoạn của GVCN
+            const commentsContainer = document.getElementById("hrPeriodCommentsList");
+            const comments = Array.isArray(st.periodComments) ? st.periodComments : [];
+            if (comments.length > 0) {
+                commentsContainer.innerHTML = comments.map(c => `
+                    <div class="p-3.5 rounded-xl bg-amber-50/80 border-l-4 border-amber-500 space-y-1">
+                        <div class="flex flex-wrap justify-between items-center gap-2">
+                            <span class="text-xs font-extrabold text-amber-900">📌 Giai đoạn: ${escapeHTML(c.period)}</span>
+                            <span class="text-[11px] text-gray-500">${escapeHTML(c.updatedAt || "")}</span>
+                        </div>
+                        <p class="text-sm text-gray-800 whitespace-pre-line">${escapeHTML(c.comment)}</p>
+                    </div>
+                `).join("");
+            } else {
+                commentsContainer.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-5 bg-gray-50 rounded-xl border">GVCN chưa đăng nhận xét theo giai đoạn nào cho bạn.</p>`;
+            }
+
+            // Hiển thị điểm của học sinh trong lớp GVCN (tôn trọng trạng thái khóa/mở sổ điểm của GVCN)
+            const gradesContainer = document.getElementById("hrStudentGradesContainer");
+            if (cls.gradebookLocked) {
+                gradesContainer.innerHTML = `
+                    <div class="text-center py-10 bg-gray-50 rounded-xl border text-gray-500">
+                        <p class="text-lg font-bold text-red-600 mb-1">🔒 Sổ điểm lớp chủ nhiệm đang khóa</p>
+                        <p class="text-xs">Giáo viên chủ nhiệm hiện đang khóa bảng điểm. Vui lòng quay lại sau khi GVCN mở sổ điểm.</p>
+                    </div>`;
+                return;
+            }
+
+            const gb = cls.multiSubjectGrades || { headers: [], rows: [] };
+            if (!Array.isArray(gb.headers) || gb.headers.length === 0 || !Array.isArray(gb.rows) || gb.rows.length === 0) {
+                gradesContainer.innerHTML = `<p class="text-xs text-gray-400 italic text-center py-5 bg-gray-50 rounded-xl border">GVCN chưa tải lên bảng điểm các môn cho lớp này.</p>`;
+                return;
+            }
+
+            // Tìm dòng điểm của chính học sinh đang đăng nhập (theo Mã HS hoặc Họ tên)
+            const normStName = normalizeName(st.name);
+            const normStCode = normalizeName(st.code);
+            const myRow = gb.rows.find(row =>
+                row.some(cell => {
+                    const c = normalizeName(cell);
+                    return (normStName && c.includes(normStName)) || (normStCode && c === normStCode);
+                })
+            );
+
+            if (!myRow) {
+                gradesContainer.innerHTML = `<p class="text-xs text-gray-500 italic text-center py-5 bg-gray-50 rounded-xl border">Chưa tìm thấy dòng điểm khớp với tên <strong>${escapeHTML(st.name)}</strong> trong bảng điểm của GVCN.</p>`;
+                return;
+            }
+
+            // Hiển thị thẻ điểm từng môn của học sinh
+            let cardsHTML = `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">`;
+            gb.headers.forEach((header, idx) => {
+                const val = myRow[idx] !== undefined && myRow[idx] !== "" ? myRow[idx] : "-";
+                cardsHTML += `
+                    <div class="p-3 rounded-xl bg-gray-50 border flex flex-col justify-between">
+                        <span class="text-[11px] font-bold text-gray-500 uppercase">${escapeHTML(header)}</span>
+                        <span class="text-base font-extrabold text-amber-900 mt-1">${escapeHTML(val)}</span>
+                    </div>`;
+            });
+            cardsHTML += `</div>`;
+            gradesContainer.innerHTML = cardsHTML;
+        }
+
+        // Học sinh tự cập nhật thông tin cá nhân -> lưu vào Firestore để hiển thị trên giao diện GVCN
+        window.saveStudentHomeroomProfile = async function() {
+            if (!currentSession.hasHomeroomClass || !currentSession.homeroomClassId || !currentSession.homeroomStudentData) {
+                alert("Bạn chưa đăng nhập vào lớp của GVCN!");
+                return;
+            }
+
+            const btn = document.getElementById("btnSaveHrProfile");
+            const orig = btn.innerText;
+            btn.innerText = "Đang lưu...";
+            btn.disabled = true;
+
+            try {
+                // Đọc bản mới nhất từ Firestore trước khi ghi đè để tránh xung đột dữ liệu với GVCN
+                const snap = await getDoc(doc(db, "homeroom_classes", "main_store"));
+                if (!snap.exists()) throw new Error("Không tìm thấy dữ liệu lớp chủ nhiệm.");
+
+                const storeData = snap.data();
+                const classes = Array.isArray(storeData.classes) ? storeData.classes : [];
+                const targetClass = classes.find(c => c.id === currentSession.homeroomClassId);
+                if (!targetClass) throw new Error("Không tìm thấy lớp chủ nhiệm.");
+
+                const targetStudent = (targetClass.students || []).find(s =>
+                    s.id === currentSession.homeroomStudentData.id ||
+                    normalizeName(s.name) === normalizeName(currentSession.homeroomStudentData.name)
+                );
+                if (!targetStudent) throw new Error("Không tìm thấy hồ sơ học sinh trong lớp.");
+
+                const newName = (document.getElementById("hrProfileName").value || "").trim() || targetStudent.name;
+                targetStudent.name = newName;
+                targetStudent.dob = (document.getElementById("hrProfileDob").value || "").trim();
+                targetStudent.gender = (document.getElementById("hrProfileGender").value || "").trim();
+                targetStudent.phone = (document.getElementById("hrProfilePhone").value || "").trim();
+                targetStudent.parentName = (document.getElementById("hrProfileParent").value || "").trim();
+                targetStudent.address = (document.getElementById("hrProfileAddress").value || "").trim();
+                targetClass.updatedAt = getCurrentDateTime().full;
+
+                await setDoc(doc(db, "homeroom_classes", "main_store"), {
+                    classes: classes,
+                    updatedAt: getCurrentDateTime().full
+                });
+
+                currentSession.homeroomClassData = targetClass;
+                currentSession.homeroomStudentData = targetStudent;
+                document.getElementById("displayStudentName").innerText = targetStudent.name;
+
+                alert("Đã cập nhật thông tin cá nhân của bạn lên hệ thống của GVCN!");
+            } catch (err) {
+                console.error("Lỗi cập nhật thông tin cá nhân:", err);
+                alert("Không thể lưu thông tin: " + err.message);
+            } finally {
+                btn.innerText = orig;
+                btn.disabled = false;
+            }
+        };
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            const savedMonoColor = localStorage.getItem("studentMonoColor") || "#1e3a8a";
+            setMonoColor(savedMonoColor);
+
+            const savedTheme = localStorage.getItem("studentTheme") || "multi";
+            setTheme(savedTheme);
+            updateDrawerActiveState();
+
+            const savedData = localStorage.getItem("savedStudentLogin");
+            if (savedData) {
+                try {
+                    const { classId, password, studentName } = JSON.parse(savedData);
+                    if (classId && password && studentName) {
+                        document.getElementById("classIdInput").value = classId;
+                        document.getElementById("passwordInput").value = password;
+                        document.getElementById("studentNameInput").value = studentName;
+                        document.getElementById("loginStatusMsg").style.display = "block";
+                        await performLogin(classId, password, studentName, true);
+                        document.getElementById("loginStatusMsg").style.display = "none";
+                    }
+                } catch (e) {
+                    clearSavedLogin();
+                }
+            }
+        });
+
         window.logout = function() {
             localStorage.removeItem("savedStudentLogin");
-            currentClassId = null;
-            currentClassData = null;
-            currentStudentData = null;
+            currentSession = {
+                loginId: null,
+                password: null,
+                studentNameQuery: null,
+                hasNormalClass: false,
+                hasHomeroomClass: false,
+                normalClassId: null,
+                normalClassData: null,
+                normalStudentData: null,
+                homeroomClassId: null,
+                homeroomClassData: null,
+                homeroomStudentData: null,
+                homeroomAllClasses: []
+            };
+            toggleNavDrawer(false);
             document.getElementById("dashboardBox").style.display = "none";
+            document.getElementById("topMenuButton").classList.add("hidden");
             document.getElementById("loginBox").style.display = "block";
             document.getElementById("studentNameInput").value = "";
             document.getElementById("passwordInput").value = "";
@@ -540,12 +1166,65 @@
     </script>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen p-4 md:p-6 transition-colors duration-200">
-    <!-- Thanh trên cùng: Phiên bản & Chọn giao diện -->
-    <div class="max-w-6xl mx-auto mb-5 bg-white shadow-sm rounded-xl px-4 py-2.5 flex flex-wrap justify-between items-center gap-3 border">
-        <div class="flex items-center gap-2">
-            <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">STUDENT v2.2.0</span>
-            <span class="text-xs text-gray-500 hidden sm:inline">Cổng Tra Cứu Học Tập Dành Cho Học Sinh</span>
+    <!-- Lớp nền mờ khi mở Menu 3 gạch -->
+    <div id="navBackdrop" onclick="toggleNavDrawer(false)" class="fixed inset-0 z-40 drawer-backdrop hidden"></div>
+
+    <!-- Ngăn kéo Menu 3 gạch điều hướng giao diện Học sinh -->
+    <aside id="navDrawer" class="fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50 p-5 flex flex-col justify-between border-r transform translate-x-[-100%] transition-transform duration-200">
+        <div>
+            <div class="flex items-center justify-between pb-4 border-b mb-4">
+                <div>
+                    <div class="text-xs font-bold uppercase tracking-wider text-blue-600">Cổng Học Sinh</div>
+                    <div class="text-base font-extrabold text-gray-900">STUDENT PORTAL</div>
+                </div>
+                <button type="button" onclick="toggleNavDrawer(false)" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex items-center justify-center">✕</button>
+            </div>
+
+            <nav class="space-y-2.5">
+                <button id="drawerBtnClassroom" type="button" onclick="switchStudentModule('classroom')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm shadow transition">
+                    <span class="text-lg">🏫</span>
+                    <div class="text-left">
+                        <div>Lớp học</div>
+                        <div class="text-[11px] font-normal opacity-80">TKB, sổ điểm, nộp bài, tài liệu lớp</div>
+                    </div>
+                </button>
+
+                <button id="drawerBtnAcademic" type="button" onclick="switchStudentModule('academic')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold text-sm transition">
+                    <span class="text-lg">📚</span>
+                    <div class="text-left">
+                        <div>Xem tài liệu</div>
+                        <div class="text-[11px] font-normal text-gray-500">Tài liệu học thuật được cấp quyền</div>
+                    </div>
+                </button>
+
+                <button id="drawerBtnHomeroom" type="button" onclick="switchStudentModule('homeroom')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold text-sm transition">
+                    <span class="text-lg">👩‍🏫</span>
+                    <div class="text-left">
+                        <div>Vào lớp của GVCN</div>
+                        <div class="text-[11px] font-normal text-gray-500">Hồ sơ cá nhân, điểm & nhận xét</div>
+                    </div>
+                </button>
+            </nav>
         </div>
+
+        <div class="pt-4 border-t text-xs text-gray-500">
+            Phiên bản <span class="font-bold text-gray-700">v2.3.0</span> • Cổng Học Tập
+        </div>
+    </aside>
+
+    <!-- Thanh trên cùng: Nút 3 gạch (khi đã đăng nhập), Phiên bản & Chọn giao diện -->
+    <div class="max-w-6xl mx-auto mb-5 bg-white shadow-sm rounded-xl px-4 py-2.5 flex flex-wrap justify-between items-center gap-3 border">
+        <div class="flex items-center gap-2.5">
+            <button id="topMenuButton" type="button" onclick="toggleNavDrawer()" title="Mở menu chuyển giao diện" aria-label="Menu" class="hidden w-10 h-10 rounded-lg bg-gray-100 hover:bg-blue-100 text-gray-800 hover:text-blue-700 flex flex-col items-center justify-center gap-1.5 border transition">
+                <span class="w-5 h-0.5 bg-current rounded"></span>
+                <span class="w-5 h-0.5 bg-current rounded"></span>
+                <span class="w-5 h-0.5 bg-current rounded"></span>
+            </button>
+
+            <span class="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">STUDENT v2.3.0</span>
+            <span id="activeStudentModuleBadge" class="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">🏫 Lớp Học</span>
+        </div>
+
         <div class="flex flex-wrap items-center gap-2 text-xs">
             <span class="text-gray-600 font-medium">Giao diện:</span>
             <button id="btnTheme_multi" onclick="setTheme('multi')" class="px-2.5 py-1 rounded border bg-gradient-to-r from-blue-500 to-purple-500 text-white transition">🎨 Đa sắc</button>
@@ -565,10 +1244,10 @@
         </div>
     </div>
 
-    <!-- Khung Đăng Nhập -->
+    <!-- Khung Đăng Nhập Thống Nhất -->
     <div id="loginBox" class="max-w-md mx-auto mt-10 bg-white shadow-xl rounded-2xl p-8 border">
         <h1 class="text-2xl font-bold text-center text-blue-600 mb-2">Tra Cứu Học Tập</h1>
-        <p class="text-center text-gray-500 text-sm mb-6">Đăng nhập vào lớp học để theo dõi thời khóa biểu, nhật ký dặn dò, tài liệu, nộp bài và xem điểm.</p>
+        <p class="text-center text-gray-500 text-sm mb-6">Đăng nhập bằng ID, Mật khẩu và Họ tên để vào Lớp học, Xem tài liệu và Lớp của GVCN.</p>
         
         <div id="loginStatusMsg" style="display: none;" class="mb-4 p-2.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg text-center border border-blue-200">
             ⏳ Đang tự động khôi phục phiên đăng nhập trước đó...
@@ -576,8 +1255,8 @@
 
         <div class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">ID Lớp Học</label>
-                <input type="text" id="classIdInput" placeholder="VD: TOAN10A1" class="w-full border rounded-lg p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <label class="block text-sm font-medium text-gray-700 mb-1">ID Lớp Học / Lớp GVCN</label>
+                <input type="text" id="classIdInput" placeholder="VD: TOAN10A1 hoặc CNXXXXXX" class="w-full border rounded-lg p-3 text-sm uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none">
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Mật Khẩu Lớp</label>
@@ -593,93 +1272,218 @@
 
     <!-- Giao Diện Mở Rộng Toàn Màn Hình Sau Khi Đăng Nhập -->
     <div id="dashboardBox" style="display: none;" class="max-w-6xl mx-auto space-y-6">
-        <!-- Header Thông Tin Học Sinh -->
-        <div class="bg-white shadow rounded-2xl p-6 flex flex-wrap justify-between items-center gap-4 border">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl">
-                    🎓
+        <!-- Header Thông Tin Học Sinh & Thanh chuyển nhanh 3 giao diện -->
+        <div class="bg-white shadow rounded-2xl p-6 space-y-4 border">
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl">
+                        🎓
+                    </div>
+                    <div>
+                        <h2 id="displayStudentName" class="text-xl font-bold text-gray-800">Tên Học Sinh</h2>
+                        <p id="displayClassName" class="text-sm text-gray-500 font-medium mt-0.5">Tên lớp</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 id="displayStudentName" class="text-xl font-bold text-gray-800">Tên Học Sinh</h2>
-                    <p id="displayClassName" class="text-sm text-gray-500 font-medium mt-0.5">Tên lớp</p>
+                <button onclick="logout()" class="text-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-bold transition">Đăng xuất</button>
+            </div>
+
+            <!-- Thông báo khi ID và mật khẩu khớp đồng thời Lớp học và Lớp của GVCN -->
+            <div id="dualClassNoticeBanner" class="hidden p-3.5 rounded-xl bg-amber-50 border border-amber-300 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="font-semibold text-amber-900">
+                    ✨ Tài khoản của bạn trùng khớp đồng thời cả <strong>Lớp học</strong> và <strong>Lớp của GVCN</strong>! Bạn có thể chuyển đổi nhanh giữa hai lớp bất cứ lúc nào:
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="switchStudentModule('classroom')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition">🏫 Lớp học</button>
+                    <button type="button" onclick="switchStudentModule('homeroom')" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold transition">👩‍🏫 Lớp của GVCN</button>
                 </div>
             </div>
-            <button onclick="logout()" class="text-sm bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-bold transition">Đăng xuất</button>
         </div>
 
-        <!-- Bố cục 2 cột rộng rãi -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
-            <!-- Cột Trái (7/12): Thời Khóa Biểu, Sổ Điểm & Nhật Ký Ghi Chú -->
-            <div class="lg:col-span-7 space-y-6">
-                <!-- Khối Thời Khóa Biểu -->
-                <div class="bg-white shadow rounded-2xl p-6 border">
-                    <h3 class="font-bold text-indigo-700 text-base mb-3">🗓️ Thời Khóa Biểu Lớp Học</h3>
-                    <div id="studentScheduleContent"></div>
-                </div>
-
-                <!-- Khối Sổ Điểm -->
-                <div class="bg-white shadow rounded-2xl p-6 border">
-                    <h3 id="gradeSectionTitle" class="font-bold text-gray-800 text-base mb-4">📊 Sổ Điểm Chi Tiết</h3>
-                    <div id="studentGradeContent"></div>
-                </div>
-
-                <!-- Khối Nhật Ký Dặn Dò Theo Ngày -->
-                <div class="bg-white shadow rounded-2xl p-6 border">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-gray-800 text-base">📌 Nhật Ký Dặn Dò Từ Giáo Viên</h3>
-                        <span class="text-xs text-gray-400">Cập nhật theo ngày</span>
-                    </div>
-                    <div id="studentNotesContent" class="space-y-3 max-h-96 overflow-y-auto pr-1">
-                        Đang tải ghi chú...
-                    </div>
+        <!-- ==================== GIAO DIỆN 1: LỚP HỌC BÌNH THƯỜNG (GIỮ NHƯ CŨ) ==================== -->
+        <div id="studentClassroomView">
+            <div id="normalClassroomEmptyNotice" class="hidden bg-white shadow rounded-2xl p-8 border text-center space-y-3">
+                <p class="text-base font-bold text-gray-700">ID & mật khẩu này thuộc về Lớp của GVCN</p>
+                <p class="text-xs text-gray-500">Không có lớp học bộ môn trùng ID & mật khẩu này. Bạn có thể chuyển sang giao diện <strong>Vào lớp của GVCN</strong> hoặc <strong>Xem tài liệu</strong>.</p>
+                <div class="flex justify-center gap-2 pt-2">
+                    <button type="button" onclick="switchStudentModule('homeroom')" class="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold">👩‍🏫 Vào lớp của GVCN</button>
+                    <button type="button" onclick="switchStudentModule('academic')" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold">📚 Xem tài liệu</button>
                 </div>
             </div>
 
-            <!-- Cột Phải (5/12): Nộp Bài & Kho Tài Liệu Theo Ngày -->
-            <div class="lg:col-span-5 space-y-6">
-                <!-- Khối Nộp Bài Tập / Bài Làm -->
-                <div class="bg-white shadow rounded-2xl p-6 border">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="font-bold text-emerald-700 text-base">📤 Nộp Bài Tập / Bài Làm</h3>
-                        <span class="text-xs text-gray-400">Ghi nhận ngày giờ</span>
+            <div id="normalClassroomActiveContent" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Cột Trái (7/12): Thời Khóa Biểu, Sổ Điểm & Nhật Ký Ghi Chú -->
+                <div class="lg:col-span-7 space-y-6">
+                    <!-- Khối Thời Khóa Biểu -->
+                    <div class="bg-white shadow rounded-2xl p-6 border">
+                        <h3 class="font-bold text-indigo-700 text-base mb-3">🗓️ Thời Khóa Biểu Lớp Học</h3>
+                        <div id="studentScheduleContent"></div>
                     </div>
-                    <p class="text-xs text-gray-500 mb-4">Dán link bài làm (Google Drive/Docs...) hoặc nhập nội dung trả lời trực tiếp.</p>
 
-                    <div class="space-y-3 mb-5">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Tên bài tập / Tiêu đề *</label>
-                            <input type="text" id="submitTitleInput" placeholder="VD: Bài tập tuần 3 - Câu 1 đến 5" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <!-- Khối Sổ Điểm -->
+                    <div class="bg-white shadow rounded-2xl p-6 border">
+                        <h3 id="gradeSectionTitle" class="font-bold text-gray-800 text-base mb-4">📊 Sổ Điểm Chi Tiết</h3>
+                        <div id="studentGradeContent"></div>
+                    </div>
+
+                    <!-- Khối Nhật Ký Dặn Dò Theo Ngày -->
+                    <div class="bg-white shadow rounded-2xl p-6 border">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-gray-800 text-base">📌 Nhật Ký Dặn Dò Từ Giáo Viên</h3>
+                            <span class="text-xs text-gray-400">Cập nhật theo ngày</span>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Link bài làm (tùy chọn)</label>
-                            <input type="url" id="submitLinkInput" placeholder="https://docs.google.com/... hoặc link Drive" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <div id="studentNotesContent" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                            Đang tải ghi chú...
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nội dung / Lời giải (tùy chọn)</label>
-                            <textarea id="submitContentInput" rows="3" placeholder="Nhập lời giải hoặc ghi chú gửi giáo viên..." class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Cột Phải (5/12): Nộp Bài & Kho Tài Liệu Theo Ngày -->
+                <div class="lg:col-span-5 space-y-6">
+                    <!-- Khối Nộp Bài Tập / Bài Làm -->
+                    <div class="bg-white shadow rounded-2xl p-6 border">
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold text-emerald-700 text-base">📤 Nộp Bài Tập / Bài Làm</h3>
+                            <span class="text-xs text-gray-400">Ghi nhận ngày giờ</span>
                         </div>
-                        <button id="submitAssignmentBtn" onclick="submitAssignment()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
-                            Gửi Bài Nộp
+                        <p class="text-xs text-gray-500 mb-4">Dán link bài làm (Google Drive/Docs...) hoặc nhập nội dung trả lời trực tiếp.</p>
+
+                        <div class="space-y-3 mb-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Tên bài tập / Tiêu đề *</label>
+                                <input type="text" id="submitTitleInput" placeholder="VD: Bài tập tuần 3 - Câu 1 đến 5" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Link bài làm (tùy chọn)</label>
+                                <input type="url" id="submitLinkInput" placeholder="https://docs.google.com/... hoặc link Drive" class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Nội dung / Lời giải (tùy chọn)</label>
+                                <textarea id="submitContentInput" rows="3" placeholder="Nhập lời giải hoặc ghi chú gửi giáo viên..." class="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+                            </div>
+                            <button id="submitAssignmentBtn" onclick="submitAssignment()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
+                                Gửi Bài Nộp
+                            </button>
+                        </div>
+
+                        <div class="border-t pt-4">
+                            <h4 class="text-xs font-bold uppercase text-gray-500 mb-2.5">Bài đã nộp của bạn:</h4>
+                            <div id="studentSubmissionList" class="space-y-2.5 max-h-64 overflow-y-auto pr-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Khối Tài Liệu Học Tập -->
+                    <div class="bg-white shadow rounded-2xl p-6 border">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-gray-800 text-base">📂 Tài Liệu Học Tập</h3>
+                            <span class="text-xs text-gray-400">Sắp xếp mới nhất</span>
+                        </div>
+                        <div id="studentDocList" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== GIAO DIỆN 2: XEM TÀI LIỆU (CHỈ XEM, KHÔNG TẢI VỀ) ==================== -->
+        <div id="studentAcademicView" class="hidden space-y-6">
+            <div class="bg-white shadow rounded-2xl p-5 border flex flex-wrap justify-between items-center gap-3">
+                <div>
+                    <h2 class="text-lg font-extrabold text-indigo-700">📚 Kho Tài Liệu Học Thuật Của Lớp</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">Chỉ hiển thị các tài liệu giáo viên đã cấp quyền cho lớp của bạn. Nội dung chỉ được xem trực tiếp trên trang.</p>
+                </div>
+                <input type="text" oninput="filterStudentAcademicDocs(this.value)" placeholder="🔍 Tìm tên hoặc nội dung tài liệu..." class="w-full sm:w-72 border rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Danh sách tài liệu được cấp quyền -->
+                <div class="lg:col-span-4 bg-white shadow rounded-2xl p-4 border h-fit">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">📑 Danh Sách Tài Liệu Được Cấp Quyền</h3>
+                    <div id="studentAcademicDocsList" class="space-y-2.5 max-h-[540px] overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Khung đọc nội dung tài liệu & sơ đồ tư duy (không có nút tải về) -->
+                <div id="studentAcademicViewerBox" class="lg:col-span-8 bg-white shadow rounded-2xl p-6 border"></div>
+            </div>
+        </div>
+
+        <!-- ==================== GIAO DIỆN 3: VÀO LỚP CỦA GVCN ==================== -->
+        <div id="studentHomeroomView" class="hidden space-y-6">
+            <div id="homeroomStudentEmptyNotice" class="hidden bg-white shadow rounded-2xl p-8 border text-center space-y-3">
+                <p class="text-base font-bold text-gray-700">Chưa có Lớp của GVCN khớp với ID & mật khẩu này</p>
+                <p class="text-xs text-gray-500">Nếu GVCN cấp cho bạn một ID và mật khẩu riêng khác với lớp học bộ môn, hãy đăng xuất và đăng nhập bằng ID & mật khẩu lớp GVCN.</p>
+            </div>
+
+            <div id="homeroomStudentActiveContent" class="space-y-6">
+                <!-- Header lớp chủ nhiệm -->
+                <div class="bg-white shadow rounded-2xl p-5 border flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-amber-700">Lớp Chủ Nhiệm</span>
+                        <h2 id="hrClassTitleDisplay" class="text-lg font-extrabold text-gray-900 mt-0.5">Lớp Chủ Nhiệm</h2>
+                    </div>
+                    <span class="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                        👩‍🏫 Dữ liệu đồng bộ trực tiếp với Giáo viên chủ nhiệm
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Cột trái: Cập nhật thông tin cá nhân của học sinh -->
+                    <div class="lg:col-span-5 bg-white shadow rounded-2xl p-6 border space-y-4 h-fit">
+                        <div>
+                            <h3 class="text-base font-bold text-amber-800">🪪 Thông Tin Cá Nhân Của Bạn</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Cập nhật thông tin bên dưới để đồng bộ hiển thị lên sổ chủ nhiệm của giáo viên.</p>
+                        </div>
+
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <label class="block font-bold text-gray-600 mb-1">Mã học sinh</label>
+                                <input id="hrProfileCode" type="text" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-600 font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-gray-600 mb-1">Họ và tên</label>
+                                <input id="hrProfileName" type="text" class="w-full border rounded-lg px-3 py-2 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block font-bold text-gray-600 mb-1">Ngày sinh</label>
+                                    <input id="hrProfileDob" type="text" placeholder="VD: 15/08/2010" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-600 mb-1">Giới tính</label>
+                                    <input id="hrProfileGender" type="text" placeholder="Nam / Nữ" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-gray-600 mb-1">Số điện thoại liên hệ</label>
+                                <input id="hrProfilePhone" type="text" placeholder="Nhập SĐT của bạn..." class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-gray-600 mb-1">Họ tên Phụ huynh</label>
+                                <input id="hrProfileParent" type="text" placeholder="Nhập họ tên cha/mẹ..." class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-gray-600 mb-1">Địa chỉ</label>
+                                <input id="hrProfileAddress" type="text" placeholder="Nhập địa chỉ hiện tại..." class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <button id="btnSaveHrProfile" type="button" onclick="saveStudentHomeroomProfile()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs shadow transition">
+                            💾 Lưu & Cập Nhật Thông Tin Cá Nhân
                         </button>
                     </div>
 
-                    <div class="border-t pt-4">
-                        <h4 class="text-xs font-bold uppercase text-gray-500 mb-2.5">Bài đã nộp của bạn:</h4>
-                        <div id="studentSubmissionList" class="space-y-2.5 max-h-64 overflow-y-auto pr-1"></div>
-                    </div>
-                </div>
+                    <!-- Cột phải: Điểm các môn & Nhận xét theo từng giai đoạn của GVCN -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="bg-white shadow rounded-2xl p-6 border space-y-3">
+                            <h3 class="text-base font-bold text-gray-800">📊 Bảng Điểm Các Môn (Lớp Chủ Nhiệm)</h3>
+                            <div id="hrStudentGradesContainer"></div>
+                        </div>
 
-                <!-- Khối Tài Liệu Học Tập -->
-                <div class="bg-white shadow rounded-2xl p-6 border">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-gray-800 text-base">📂 Tài Liệu Học Tập</h3>
-                        <span class="text-xs text-gray-400">Sắp xếp mới nhất</span>
+                        <div class="bg-white shadow rounded-2xl p-6 border space-y-3">
+                            <h3 class="text-base font-bold text-amber-800">📝 Nhận Xét Theo Từng Giai Đoạn Của GVCN</h3>
+                            <div id="hrPeriodCommentsList" class="space-y-3 max-h-96 overflow-y-auto pr-1"></div>
+                        </div>
                     </div>
-                    <div id="studentDocList" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
                 </div>
             </div>
-
         </div>
     </div>
 </body>
