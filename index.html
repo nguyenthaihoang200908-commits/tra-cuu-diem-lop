@@ -1157,7 +1157,7 @@
 
         function canEditPersonalInfo(cls, st) {
             if (!cls) return false;
-            if (st && (st.allowPersonalInfoEdit === true || st.canEditPersonalInfo === true)) return true;
+            if (st && (st.canEditProfile === true || st.allowPersonalInfoEdit === true || st.canEditPersonalInfo === true)) return true;
             const flagCandidates = [
                 cls.allowClassInfoUpdate,
                 cls.allowGeneralInfoUpdate,
