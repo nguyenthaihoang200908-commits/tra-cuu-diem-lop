@@ -942,7 +942,8 @@
                 return;
             }
 
-            const mindMapHTML = activeDoc.mindMap
+            const shouldShowMindMap = Boolean(activeDoc.mindMap && activeDoc.showMindMap !== false);
+            const mindMapHTML = shouldShowMindMap
                 ? `<div class="p-4 rounded-xl bg-gray-50 border space-y-2 mt-5">
                         <div class="text-xs font-extrabold uppercase text-indigo-800">🧠 Sơ Đồ Tư Duy Tài Liệu</div>
                         <div class="overflow-x-auto py-1">${renderReadOnlyMindMapHTML(activeDoc.mindMap, true)}</div>
