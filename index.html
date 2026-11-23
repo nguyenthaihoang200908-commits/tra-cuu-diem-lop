@@ -111,13 +111,17 @@
             margin: 0.6rem 0;
         }
         .academic-readonly-viewer table {
-            width: 100%;
+            max-width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
             margin: 0.6rem 0;
         }
         .academic-readonly-viewer table td, .academic-readonly-viewer table th {
             border: 1px solid #cbd5e1;
             padding: 0.45rem 0.6rem;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            vertical-align: top;
         }
         .academic-readonly-viewer img {
             max-width: 100%;
@@ -695,9 +699,9 @@
                 htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide border-b pb-2">📚 Học Kỳ 1</h3>`;
                 if (cData.columnsHK1) {
                     cData.columnsHK1.forEach(col => {
-                        let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
+                        let sc = (student.scores && student.scores[col.id] !== undefined && student.scores[col.id] !== null && student.scores[col.id] !== "") ? student.scores[col.id] : "-";
                         htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${escapeHTML(col.name)} <span class="text-xs">(HS ${escapeHTML(col.weight)})</span>:</span> <span class="font-bold">${escapeHTML(sc)}</span></div>`;
-                        if (sc !== "" && sc !== "-") { sum1 += parseFloat(sc) * col.weight; weight1 += col.weight; }
+                        if (sc !== "" && sc !== "-" && !isNaN(parseFloat(sc))) { sum1 += parseFloat(sc) * col.weight; weight1 += col.weight; }
                     });
                 }
                 let avg1 = weight1 > 0 ? (sum1 / weight1).toFixed(1) : "-";
@@ -709,9 +713,9 @@
                 htmlDetails += `<h3 class="font-bold text-blue-700 mb-2 text-sm uppercase tracking-wide border-b pb-2">📚 Học Kỳ 2</h3>`;
                 if (cData.columnsHK2) {
                     cData.columnsHK2.forEach(col => {
-                        let sc = student.scores && student.scores[col.id] !== undefined ? student.scores[col.id] : "-";
+                        let sc = (student.scores && student.scores[col.id] !== undefined && student.scores[col.id] !== null && student.scores[col.id] !== "") ? student.scores[col.id] : "-";
                         htmlDetails += `<div class="flex justify-between text-sm border-b border-gray-200/70 pb-1.5"><span class="text-gray-600">${escapeHTML(col.name)} <span class="text-xs">(HS ${escapeHTML(col.weight)})</span>:</span> <span class="font-bold">${escapeHTML(sc)}</span></div>`;
-                        if (sc !== "" && sc !== "-") { sum2 += parseFloat(sc) * col.weight; weight2 += col.weight; }
+                        if (sc !== "" && sc !== "-" && !isNaN(parseFloat(sc))) { sum2 += parseFloat(sc) * col.weight; weight2 += col.weight; }
                     });
                 }
                 let avg2 = weight2 > 0 ? (sum2 / weight2).toFixed(1) : "-";
@@ -746,7 +750,7 @@
                 let extraHTML = `<div class="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-2.5">`;
                 if (cData.extraColumns && cData.extraColumns.length > 0) {
                     cData.extraColumns.forEach(col => {
-                        let sc = student.extraScores && student.extraScores[col.id] !== undefined ? student.extraScores[col.id] : "-";
+                        let sc = (student.extraScores && student.extraScores[col.id] !== undefined && student.extraScores[col.id] !== null && student.extraScores[col.id] !== "") ? student.extraScores[col.id] : "-";
                         extraHTML += `<div class="flex justify-between items-center text-sm border-b border-purple-200/60 pb-2"><span class="text-gray-700 font-medium">${escapeHTML(col.name)}:</span> <span class="font-bold text-purple-900 text-base bg-white px-3 py-0.5 rounded border border-purple-200">${escapeHTML(sc)}</span></div>`;
                     });
                 } else {
@@ -1891,11 +1895,12 @@
             }
 
             const mode = document.getElementById("hrPointModeSelect")?.value || "add";
-            const rawAmount = parseFloat(document.getElementById("hrPointDeltaInput")?.value || "0");
+            const rawStr = document.getElementById("hrPointDeltaInput")?.value;
+            const rawAmount = parseFloat(rawStr);
             const reason = (document.getElementById("hrActivityReasonInput")?.value || "").trim();
 
-            if (!Number.isFinite(rawAmount) || rawAmount <= 0) {
-                alert("Vui lòng nhập số điểm lớn hơn 0!");
+            if (rawStr === undefined || rawStr === "" || !Number.isFinite(rawAmount) || rawAmount < 0) {
+                alert("Vui lòng nhập số điểm hợp lệ (từ 0 trở lên)!");
                 return;
             }
             if (!reason) {
@@ -2421,7 +2426,7 @@
                                         </div>
                                         <div>
                                             <label class="block font-bold text-gray-700 mb-1">Số điểm *</label>
-                                            <input id="hrPointDeltaInput" type="number" step="0.5" min="0.5" value="1" class="w-full border rounded-lg px-3 py-2 font-bold bg-white">
+                                            <input id="hrPointDeltaInput" type="number" step="0.5" min="0" value="1" class="w-full border rounded-lg px-3 py-2 font-bold bg-white">
                                         </div>
                                         <div>
                                             <label class="block font-bold text-gray-700 mb-1">Hoạt động / Lý do *</label>
